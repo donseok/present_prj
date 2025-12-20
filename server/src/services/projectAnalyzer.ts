@@ -444,60 +444,6 @@ function detectProjectType(files: FileContent[], structure: string[]): string {
   return '알 수 없음'
 }
 
-// 기능 요구사항 추출
-function extractRequirements(readmeInfo: ReturnType<typeof parseReadme>, projectType: string): {
-  functional: Array<{ id: string; category: string; description: string; priority: 'high' | 'medium' | 'low' }>
-  nonFunctional: Array<{ id: string; category: string; description: string; priority: 'high' | 'medium' | 'low' }>
-} {
-  const functional: Array<{ id: string; category: string; description: string; priority: 'high' | 'medium' | 'low' }> = []
-  const nonFunctional: Array<{ id: string; category: string; description: string; priority: 'high' | 'medium' | 'low' }> = []
-
-  // README 기능에서 요구사항 추출
-  if (readmeInfo.features) {
-    readmeInfo.features.forEach((feature, idx) => {
-      functional.push({
-        id: `FR-${String(idx + 1).padStart(3, '0')}`,
-        category: '주요 기능',
-        description: feature,
-        priority: idx < 3 ? 'high' : 'medium'
-      })
-    })
-  }
-
-  // 프로젝트 타입에 따른 비기능 요구사항 추가
-  if (projectType.includes('React') || projectType.includes('Vue') || projectType.includes('Angular')) {
-    nonFunctional.push({
-      id: 'NFR-001',
-      category: '성능',
-      description: '페이지 로딩 시간 3초 이내',
-      priority: 'high'
-    })
-    nonFunctional.push({
-      id: 'NFR-002',
-      category: '호환성',
-      description: '최신 브라우저 지원 (Chrome, Firefox, Safari, Edge)',
-      priority: 'medium'
-    })
-  }
-
-  if (projectType.includes('Express') || projectType.includes('NestJS') || projectType.includes('FastAPI')) {
-    nonFunctional.push({
-      id: 'NFR-001',
-      category: '성능',
-      description: 'API 응답 시간 500ms 이내',
-      priority: 'high'
-    })
-    nonFunctional.push({
-      id: 'NFR-002',
-      category: '보안',
-      description: 'API 인증 및 권한 관리',
-      priority: 'high'
-    })
-  }
-
-  return { functional, nonFunctional }
-}
-
 // PRD 정보를 포함한 요구사항 추출
 function extractRequirementsWithPrd(
   readmeInfo: ReturnType<typeof parseReadme>,
@@ -607,17 +553,16 @@ function extractRequirementsWithPrd(
 }
 
 // WBS에서 마일스톤 추출
-function extractMilestonesFromWbs(wbsInfo: ParsedWbs): Array<{ name: string; dueDate: string; description: string; status: string }> {
-  const milestones: Array<{ name: string; dueDate: string; description: string; status: string }> = []
+function extractMilestonesFromWbs(wbsInfo: ParsedWbs): Array<{ name: string; date: string; deliverables: string }> {
+  const milestones: Array<{ name: string; date: string; deliverables: string }> = []
 
   // WBS 마일스톤에서 추출
   if (wbsInfo.milestones && wbsInfo.milestones.length > 0) {
     wbsInfo.milestones.forEach(ms => {
       milestones.push({
         name: ms.name,
-        dueDate: '',
-        description: ms.description || '',
-        status: '계획됨'
+        date: '',
+        deliverables: ms.description || ''
       })
     })
   }
@@ -627,9 +572,8 @@ function extractMilestonesFromWbs(wbsInfo: ParsedWbs): Array<{ name: string; due
     wbsInfo.phases.forEach(phase => {
       milestones.push({
         name: phase.name,
-        dueDate: '',
-        description: phase.tasks ? phase.tasks.join(', ') : '',
-        status: '계획됨'
+        date: '',
+        deliverables: phase.tasks ? phase.tasks.join(', ') : ''
       })
     })
   }
@@ -639,9 +583,8 @@ function extractMilestonesFromWbs(wbsInfo: ParsedWbs): Array<{ name: string; due
     wbsInfo.deliverables.forEach(del => {
       milestones.push({
         name: `산출물: ${del}`,
-        dueDate: '',
-        description: '',
-        status: '계획됨'
+        date: '',
+        deliverables: ''
       })
     })
   }
