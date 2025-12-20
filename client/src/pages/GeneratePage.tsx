@@ -4,7 +4,6 @@ import { projectApi, templateApi, documentApi } from '../services/api'
 import FolderPicker from '../components/FolderPicker'
 import type { Project, Template } from '../types'
 
-type Language = 'ko' | 'en' | 'vi'
 type SaveMode = 'download' | 'folder'
 
 function GeneratePage() {
@@ -16,7 +15,6 @@ function GeneratePage() {
   const [generating, setGenerating] = useState(false)
   const [loading, setLoading] = useState(true)
   const [generatedCount, setGeneratedCount] = useState(0)
-  const [language, setLanguage] = useState<Language>('ko')
   const [saveMode, setSaveMode] = useState<SaveMode>('download')
   const [savePath, setSavePath] = useState('')
   const [generatedFiles, setGeneratedFiles] = useState<string[]>([])
@@ -89,8 +87,7 @@ function GeneratePage() {
         } else {
           // 브라우저 다운로드
           const blob = await documentApi.generate(project.id, templateId)
-          const langSuffix = language === 'ko' ? '' : `_${language.toUpperCase()}`
-          const filename = `${project.name}_${template?.documentType || 'document'}${langSuffix}.${template?.format || 'docx'}`
+          const filename = `${project.name}_${template?.documentType || 'document'}.${template?.format || 'docx'}`
 
           const url = window.URL.createObjectURL(blob)
           const a = document.createElement('a')
@@ -116,11 +113,7 @@ function GeneratePage() {
     }
   }
 
-  const languageOptions = [
-    { value: 'ko', label: '한국어', flag: '🇰🇷' },
-    { value: 'en', label: 'English', flag: '🇺🇸' },
-    { value: 'vi', label: 'Tiếng Việt', flag: '🇻🇳' },
-  ]
+
 
   if (loading) {
     return (
@@ -210,29 +203,6 @@ function GeneratePage() {
         </div>
       </div>
 
-      {/* Language Selection */}
-      <div className="card p-6">
-        <div className="section-title">
-          <span>🌐</span>
-          <span>문서 언어</span>
-        </div>
-        <div className="flex gap-3">
-          {languageOptions.map((lang) => (
-            <button
-              key={lang.value}
-              onClick={() => setLanguage(lang.value as Language)}
-              className={`flex items-center gap-2 px-4 py-3 rounded-xl transition-all ${
-                language === lang.value
-                  ? 'bg-gradient-to-r from-purple-500 to-pink-500 text-white'
-                  : 'bg-[#1a1a2e] text-gray-400 hover:bg-[#252540] border border-purple-500/20'
-              }`}
-            >
-              <span className="text-xl">{lang.flag}</span>
-              <span className="font-medium">{lang.label}</span>
-            </button>
-          ))}
-        </div>
-      </div>
 
       {/* Save Location */}
       <div className="card p-6">
@@ -251,11 +221,10 @@ function GeneratePage() {
         <div className="flex gap-3 mb-4">
           <button
             onClick={() => setSaveMode('download')}
-            className={`flex-1 flex items-center justify-center gap-2 px-4 py-3 rounded-xl transition-all ${
-              saveMode === 'download'
-                ? 'bg-gradient-to-r from-purple-500 to-pink-500 text-white'
-                : 'bg-[#1a1a2e] text-gray-400 hover:bg-[#252540] border border-purple-500/20'
-            }`}
+            className={`flex-1 flex items-center justify-center gap-2 px-4 py-3 rounded-xl transition-all ${saveMode === 'download'
+              ? 'bg-gradient-to-r from-purple-500 to-pink-500 text-white'
+              : 'bg-[#1a1a2e] text-gray-400 hover:bg-[#252540] border border-purple-500/20'
+              }`}
           >
             <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
@@ -264,11 +233,10 @@ function GeneratePage() {
           </button>
           <button
             onClick={() => setSaveMode('folder')}
-            className={`flex-1 flex items-center justify-center gap-2 px-4 py-3 rounded-xl transition-all ${
-              saveMode === 'folder'
-                ? 'bg-gradient-to-r from-purple-500 to-pink-500 text-white'
-                : 'bg-[#1a1a2e] text-gray-400 hover:bg-[#252540] border border-purple-500/20'
-            }`}
+            className={`flex-1 flex items-center justify-center gap-2 px-4 py-3 rounded-xl transition-all ${saveMode === 'folder'
+              ? 'bg-gradient-to-r from-purple-500 to-pink-500 text-white'
+              : 'bg-[#1a1a2e] text-gray-400 hover:bg-[#252540] border border-purple-500/20'
+              }`}
           >
             <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-6l-2-2H5a2 2 0 00-2 2z" />
@@ -334,17 +302,15 @@ function GeneratePage() {
               return (
                 <label
                   key={template.id}
-                  className={`flex items-center p-4 rounded-xl cursor-pointer transition-all ${
-                    isSelected
-                      ? 'bg-purple-500/20 border-2 border-purple-500'
-                      : 'bg-[#252540] border-2 border-transparent hover:border-purple-500/30'
-                  }`}
+                  className={`flex items-center p-4 rounded-xl cursor-pointer transition-all ${isSelected
+                    ? 'bg-purple-500/20 border-2 border-purple-500'
+                    : 'bg-[#252540] border-2 border-transparent hover:border-purple-500/30'
+                    }`}
                 >
-                  <div className={`w-6 h-6 rounded-lg flex items-center justify-center transition-all ${
-                    isSelected
-                      ? 'bg-gradient-to-r from-purple-500 to-pink-500 text-white'
-                      : 'border-2 border-gray-600'
-                  }`}>
+                  <div className={`w-6 h-6 rounded-lg flex items-center justify-center transition-all ${isSelected
+                    ? 'bg-gradient-to-r from-purple-500 to-pink-500 text-white'
+                    : 'border-2 border-gray-600'
+                    }`}>
                     {isSelected && (
                       <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
@@ -357,21 +323,19 @@ function GeneratePage() {
                     onChange={() => toggleTemplate(template.id)}
                     className="hidden"
                   />
-                  <div className={`w-10 h-10 ml-4 rounded-lg flex items-center justify-center text-lg ${
-                    template.format === 'docx'
-                      ? 'bg-blue-500/20 text-blue-400'
-                      : 'bg-orange-500/20 text-orange-400'
-                  }`}>
+                  <div className={`w-10 h-10 ml-4 rounded-lg flex items-center justify-center text-lg ${template.format === 'docx'
+                    ? 'bg-blue-500/20 text-blue-400'
+                    : 'bg-orange-500/20 text-orange-400'
+                    }`}>
                     {template.format === 'docx' ? '📄' : '📊'}
                   </div>
                   <div className="ml-4 flex-1">
                     <div className="flex items-center gap-2">
                       <span className="font-medium text-white">{template.documentType}</span>
-                      <span className={`px-2 py-0.5 text-xs font-semibold rounded-full ${
-                        template.format === 'docx'
-                          ? 'bg-blue-500/20 text-blue-400'
-                          : 'bg-orange-500/20 text-orange-400'
-                      }`}>
+                      <span className={`px-2 py-0.5 text-xs font-semibold rounded-full ${template.format === 'docx'
+                        ? 'bg-blue-500/20 text-blue-400'
+                        : 'bg-orange-500/20 text-orange-400'
+                        }`}>
                         {template.format.toUpperCase()}
                       </span>
                     </div>

@@ -31,7 +31,6 @@ const defaultTemplateOptions = [
 ]
 
 type OutputFormat = 'pptx' | 'docx' | 'pdf'
-type Language = 'ko' | 'en' | 'vi'
 
 interface GeneratedFile {
   name: string
@@ -45,7 +44,6 @@ function HomePage() {
   const [documentTitle, setDocumentTitle] = useState('')
   const [selectedTemplate, setSelectedTemplate] = useState<string | null>(null)
   const [outputFormat, setOutputFormat] = useState<OutputFormat>('pptx')
-  const [language, setLanguage] = useState<Language>('ko')
   const [generating, setGenerating] = useState(false)
   const [generatedFiles, setGeneratedFiles] = useState<GeneratedFile[]>([])
   const [projects, setProjects] = useState<Project[]>([])
@@ -85,14 +83,14 @@ function HomePage() {
     try {
       // If a project is selected and templates are available, generate real documents
       if (selectedProject && templates.length > 0) {
-        const template = templates.find(t => t.id === selectedTemplate)
+        const template = templates.find((t: Template) => t.id === selectedTemplate)
         if (template) {
           const blob = await documentApi.generate(selectedProject, selectedTemplate, outputFormat)
           const filename = `${documentTitle}_${template.documentType}.${outputFormat}`
           newFiles.push({
             name: filename,
             format: outputFormat,
-            language: language === 'ko' ? '한국어' : language === 'en' ? 'English' : 'Tiếng Việt',
+            language: '한국어',
             blob,
           })
         }
@@ -104,7 +102,7 @@ function HomePage() {
           newFiles.push({
             name: filename,
             format: outputFormat,
-            language: language === 'ko' ? '한국어' : language === 'en' ? 'English' : 'Tiếng Việt',
+            language: '한국어',
           })
         }
       }
@@ -132,12 +130,6 @@ function HomePage() {
       alert('데모 모드: 실제 문서를 생성하려면 프로젝트와 템플릿을 먼저 등록해주세요.')
     }
   }
-
-  const languageOptions = [
-    { value: 'ko', label: '한국어', flag: '🇰🇷', tooltip: '한국어' },
-    { value: 'en', label: 'English', flag: '🇺🇸', tooltip: '영어' },
-    { value: 'vi', label: 'Tiếng Việt', flag: '🇻🇳', tooltip: '베트남어' },
-  ]
 
   return (
     <div className="space-y-8">
@@ -186,32 +178,6 @@ function HomePage() {
           </select>
         </div>
       )}
-
-      {/* Language Selection */}
-      <div className="card p-6">
-        <div className="section-title">
-          <span>🌐</span>
-          <span>문서 언어</span>
-        </div>
-        <div className="flex gap-3">
-          {languageOptions.map((lang) => (
-            <div key={lang.value} className="tooltip-container">
-              <button
-                onClick={() => setLanguage(lang.value as Language)}
-                className={`flex items-center gap-2 px-4 py-3 rounded-xl transition-all ${
-                  language === lang.value
-                    ? 'bg-gradient-to-r from-purple-500 to-pink-500 text-white'
-                    : 'bg-[#1a1a2e] text-gray-400 hover:bg-[#252540] border border-purple-500/20'
-                }`}
-              >
-                <span className="text-xl">{lang.flag}</span>
-                <span className="font-medium">{lang.label}</span>
-              </button>
-              <div className="tooltip tooltip-bottom">{lang.tooltip}</div>
-            </div>
-          ))}
-        </div>
-      </div>
 
       {/* Template Selection */}
       <div className="card p-6">
@@ -347,13 +313,12 @@ function HomePage() {
             {generatedFiles.map((file, index) => (
               <div key={index} className="file-item">
                 <div className="flex items-center gap-3">
-                  <div className={`icon-box-sm ${
-                    file.format === 'pptx'
+                  <div className={`icon-box-sm ${file.format === 'pptx'
                       ? 'bg-gradient-to-br from-orange-500/20 to-red-500/20'
                       : file.format === 'pdf'
-                      ? 'bg-gradient-to-br from-red-600/20 to-red-800/20'
-                      : 'bg-gradient-to-br from-blue-500/20 to-indigo-500/20'
-                  }`}>
+                        ? 'bg-gradient-to-br from-red-600/20 to-red-800/20'
+                        : 'bg-gradient-to-br from-blue-500/20 to-indigo-500/20'
+                    }`}>
                     <span>{file.format === 'pptx' ? '📊' : file.format === 'pdf' ? '📕' : '📄'}</span>
                   </div>
                   <div>

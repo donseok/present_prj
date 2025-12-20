@@ -106,3 +106,19 @@ export const analyzeApi = {
     return response.data
   },
 }
+
+export const settingsApi = {
+  get: async (): Promise<{ hasApiKey: boolean; claudeApiKey?: string }> => {
+    const response = await api.get('/settings')
+    return response.data
+  },
+
+  update: async (settings: { claudeApiKey?: string }): Promise<void> => {
+    await api.put('/settings', settings)
+  },
+
+  validateApiKey: async (apiKey: string): Promise<{ valid: boolean; error?: string }> => {
+    const response = await api.post('/settings/validate-api-key', { apiKey })
+    return response.data
+  },
+}

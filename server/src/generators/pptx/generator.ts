@@ -1,6 +1,7 @@
 import fs from 'fs/promises'
 import JSZip from 'jszip'
 import type { Project, Template } from '../../types/index.js'
+import { mergeFragmentedPlaceholders } from '../../utils/xmlUtils.js'
 
 const PLACEHOLDER_REGEX = /\{\{([^}]+)\}\}/g
 
@@ -34,57 +35,10 @@ function getPlaceholderValue(key: string, project: Project): string {
   return keyMap[key] ?? `{{${key}}}`
 }
 
-/**
- * Preprocess XML to merge fragmented placeholders.
- * PowerPoint often splits text across multiple <a:t> tags, e.g.,
- * <a:t>{{</a:t><a:t>프로젝트</a:t><a:t>명}}</a:t>
- * This function merges such fragmented placeholders.
- */
-function preprocessXml(xml: string): string {
-  // Merge consecutive <a:t> tags within the same <a:r> (run)
-  // This preserves formatting while allowing placeholder detection
-  const runPattern = /<a:r\b[^>]*>([\s\S]*?)<\/a:r>/g
-  let result = xml
-
-  result = result.replace(runPattern, (match, runContent) => {
-    // Extract all text from <a:t> tags in this run
-    const textParts: string[] = []
-    const textPattern = /<a:t[^>]*>([^<]*)<\/a:t>/g
-    let textMatch
-    while ((textMatch = textPattern.exec(runContent)) !== null) {
-      textParts.push(textMatch[1])
-    }
-
-    const combinedText = textParts.join('')
-
-    // If combined text contains a complete placeholder, merge the <a:t> tags
-    if (/\{\{[^}]+\}\}/.test(combinedText)) {
-      // Replace all <a:t>...</a:t> sequences with a single merged one
-      const mergedRun = runContent.replace(
-        /(<a:t[^>]*>)[^<]*<\/a:t>(?:(?:<[^a:t]*>)*<a:t[^>]*>[^<]*<\/a:t>)*/g,
-        (_m: string, openTag: string) => {
-          return `${openTag}${combinedText}</a:t>`
-        }
-      )
-
-      // Clean up by keeping only the first <a:t> with merged content
-      const firstTextTag = /<a:t[^>]*>[^<]*<\/a:t>/.exec(mergedRun)
-      if (firstTextTag) {
-        const beforeFirstText = mergedRun.substring(0, mergedRun.indexOf(firstTextTag[0]))
-        const afterLastText = mergedRun.substring(mergedRun.lastIndexOf('</a:t>') + 6)
-        return `<a:r${match.substring(4, match.indexOf('>'))}>${beforeFirstText}<a:t>${combinedText}</a:t>${afterLastText}</a:r>`
-      }
-    }
-
-    return match
-  })
-
-  return result
-}
 
 function replacePlaceholders(content: string, project: Project): string {
-  // Preprocess XML to merge fragmented placeholders
-  const preprocessedContent = preprocessXml(content)
+  // Preprocess XML to merge fragmented placeholders using the new utility
+  const preprocessedContent = mergeFragmentedPlaceholders(content, 'a')
 
   return preprocessedContent.replace(PLACEHOLDER_REGEX, (_match, key) => {
     return getPlaceholderValue(key.trim(), project)

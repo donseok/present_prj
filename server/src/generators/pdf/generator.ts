@@ -8,26 +8,49 @@ const __filename = fileURLToPath(import.meta.url)
 const __dirname = path.dirname(__filename)
 
 // Korean font path configuration
-// Place a Korean TTF font file (e.g., NotoSansKR-Regular.ttf) in assets/fonts/
+// Priority: Local assets > Windows system fonts
 const KOREAN_FONT_PATH = path.join(__dirname, '../../assets/fonts/NotoSansKR-Regular.ttf')
 
 function getKoreanFontPath(): string | null {
   if (fs.existsSync(KOREAN_FONT_PATH)) {
     return KOREAN_FONT_PATH
   }
-  // Check alternative locations
-  const alternativePaths = [
+
+  // Check alternative locations in local assets
+  const localPaths = [
     path.join(__dirname, '../../assets/fonts/NotoSansKR-Regular.otf'),
     path.join(__dirname, '../../assets/fonts/NanumGothic.ttf'),
     path.join(__dirname, '../../assets/fonts/MalgunGothic.ttf'),
   ]
-  for (const altPath of alternativePaths) {
-    if (fs.existsSync(altPath)) {
-      return altPath
+
+  for (const localPath of localPaths) {
+    if (fs.existsSync(localPath)) {
+      return localPath
     }
   }
+
+  // Fallback to Windows system fonts
+  const windowsFontsDir = 'C:/Windows/Fonts'
+  const windowsFonts = [
+    'malgun.ttf',      // Malgun Gothic (맑은 고딕) - Windows default Korean font
+    'malgunsl.ttf',    // Malgun Gothic Light
+    'malgunbd.ttf',    // Malgun Gothic Bold
+    'NanumGothic.ttf', // Nanum Gothic
+    'gulim.ttc',       // Gulim (굴림)
+    'batang.ttc',      // Batang (바탕)
+  ]
+
+  for (const fontFile of windowsFonts) {
+    const fontPath = path.join(windowsFontsDir, fontFile)
+    if (fs.existsSync(fontPath)) {
+      console.log(`[PDF Generator] Using Windows system font: ${fontFile}`)
+      return fontPath
+    }
+  }
+
   return null
 }
+
 
 export async function generatePdf(project: Project, template: Template): Promise<Buffer> {
   return new Promise((resolve, reject) => {

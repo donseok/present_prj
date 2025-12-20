@@ -164,18 +164,16 @@ function TemplatesPage() {
             >
               {/* Card Header */}
               <div className="flex items-start justify-between mb-4">
-                <div className={`w-12 h-12 rounded-xl flex items-center justify-center text-white text-xl shadow-lg ${
-                  template.format === 'docx'
-                    ? 'bg-gradient-to-br from-blue-500 to-indigo-500'
-                    : 'bg-gradient-to-br from-orange-500 to-red-500'
-                }`}>
+                <div className={`w-12 h-12 rounded-xl flex items-center justify-center text-white text-xl shadow-lg ${template.format === 'docx'
+                  ? 'bg-gradient-to-br from-blue-500 to-indigo-500'
+                  : 'bg-gradient-to-br from-orange-500 to-red-500'
+                  }`}>
                   {template.format === 'docx' ? '📄' : '📊'}
                 </div>
-                <span className={`px-3 py-1 text-xs font-semibold rounded-full ${
-                  template.format === 'docx'
-                    ? 'bg-blue-500/20 text-blue-400'
-                    : 'bg-orange-500/20 text-orange-400'
-                }`}>
+                <span className={`px-3 py-1 text-xs font-semibold rounded-full ${template.format === 'docx'
+                  ? 'bg-blue-500/20 text-blue-400'
+                  : 'bg-orange-500/20 text-orange-400'
+                  }`}>
                   {template.format.toUpperCase()}
                 </span>
               </div>
@@ -187,7 +185,7 @@ function TemplatesPage() {
               <p className="text-sm text-gray-400 mb-4">{template.documentType}</p>
 
               {/* Placeholders */}
-              {template.placeholders.length > 0 && (
+              {template.placeholders.length > 0 ? (
                 <div className="mb-4">
                   <p className="text-xs text-gray-500 mb-2">감지된 플레이스홀더</p>
                   <div className="flex flex-wrap gap-1">
@@ -205,6 +203,15 @@ function TemplatesPage() {
                       </span>
                     )}
                   </div>
+                </div>
+              ) : (
+                <div className="mb-4 p-2 bg-yellow-500/10 border border-yellow-500/20 rounded-lg">
+                  <p className="text-xs text-yellow-400">
+                    ⚠️ 플레이스홀더가 감지되지 않았습니다.
+                  </p>
+                  <p className="text-xs text-gray-500 mt-1">
+                    템플릿에 {'{{프로젝트명}}'} 형식으로 작성했는지 확인하세요.
+                  </p>
                 </div>
               )}
 
@@ -240,11 +247,10 @@ function TemplatesPage() {
               {documentTypes.map((type) => (
                 <label
                   key={type.value}
-                  className={`flex items-center gap-3 p-4 rounded-xl cursor-pointer transition-all ${
-                    selectedType === type.value
-                      ? 'bg-purple-500/20 border-2 border-purple-500'
-                      : 'bg-[#252540] border-2 border-transparent hover:border-purple-500/30'
-                  }`}
+                  className={`flex items-center gap-3 p-4 rounded-xl cursor-pointer transition-all ${selectedType === type.value
+                    ? 'bg-purple-500/20 border-2 border-purple-500'
+                    : 'bg-[#252540] border-2 border-transparent hover:border-purple-500/30'
+                    }`}
                 >
                   <input
                     type="radio"

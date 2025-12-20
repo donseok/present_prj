@@ -1,6 +1,7 @@
 import fs from 'fs/promises'
 import JSZip from 'jszip'
 import type { Project, Template } from '../../types/index.js'
+import { mergeFragmentedPlaceholders } from '../../utils/xmlUtils.js'
 
 const PLACEHOLDER_REGEX = /\{\{([^}]+)\}\}/g
 
@@ -34,58 +35,10 @@ function getPlaceholderValue(key: string, project: Project): string {
   return keyMap[key] ?? `{{${key}}}`
 }
 
-/**
- * Preprocess XML to merge fragmented placeholders.
- * MS Word often splits text across multiple <w:t> tags, e.g.,
- * <w:t>{{</w:t><w:t>프로젝트</w:t><w:t>명}}</w:t>
- * This function merges such fragmented placeholders.
- */
-function preprocessXml(xml: string): string {
-  // Merge consecutive <w:t> tags within the same <w:r> (run)
-  // This preserves formatting while allowing placeholder detection
-  const runPattern = /<w:r\b[^>]*>([\s\S]*?)<\/w:r>/g
-  let result = xml
-
-  result = result.replace(runPattern, (match, runContent) => {
-    // Extract all text from <w:t> tags in this run
-    const textParts: string[] = []
-    const textPattern = /<w:t[^>]*>([^<]*)<\/w:t>/g
-    let textMatch
-    while ((textMatch = textPattern.exec(runContent)) !== null) {
-      textParts.push(textMatch[1])
-    }
-
-    const combinedText = textParts.join('')
-
-    // If combined text contains a complete placeholder, merge the <w:t> tags
-    if (/\{\{[^}]+\}\}/.test(combinedText)) {
-      // Replace all <w:t>...</w:t> sequences with a single merged one
-      const mergedRun = runContent.replace(
-        /(<w:t[^>]*>)[^<]*<\/w:t>(?:(?:<[^w:t]*>)*<w:t[^>]*>[^<]*<\/w:t>)*/g,
-        (_m: string, openTag: string) => {
-          // Only replace if this is part of the fragmented placeholder
-          return `${openTag}${combinedText}</w:t>`
-        }
-      )
-
-      // Clean up by keeping only the first <w:t> with merged content
-      const firstTextTag = /<w:t[^>]*>[^<]*<\/w:t>/.exec(mergedRun)
-      if (firstTextTag) {
-        const beforeFirstText = mergedRun.substring(0, mergedRun.indexOf(firstTextTag[0]))
-        const afterLastText = mergedRun.substring(mergedRun.lastIndexOf('</w:t>') + 6)
-        return `<w:r${match.substring(4, match.indexOf('>'))}>${beforeFirstText}<w:t xml:space="preserve">${combinedText}</w:t>${afterLastText}</w:r>`
-      }
-    }
-
-    return match
-  })
-
-  return result
-}
 
 function replacePlaceholders(content: string, project: Project): string {
-  // Preprocess XML to merge fragmented placeholders
-  const preprocessedContent = preprocessXml(content)
+  // Preprocess XML to merge fragmented placeholders using the new utility
+  const preprocessedContent = mergeFragmentedPlaceholders(content, 'w')
 
   return preprocessedContent.replace(PLACEHOLDER_REGEX, (_match, key) => {
     return getPlaceholderValue(key.trim(), project)
