@@ -3,11 +3,13 @@ import { useNavigate } from 'react-router-dom'
 import { analyzeApi, projectApi } from '../services/api'
 import type { AnalyzedProjectInfo, FolderItem, TeamMember, Milestone } from '../types'
 import DatePicker from '../components/DatePicker'
+import { useLanguage } from '../contexts/LanguageContext'
 
 type Step = 'folder' | 'analyzing' | 'review'
 
 function AnalyzePage() {
   const navigate = useNavigate()
+  const { t } = useLanguage()
 
   // 단계 관리
   const [step, setStep] = useState<Step>('folder')
@@ -21,7 +23,6 @@ function AnalyzePage() {
   const [pathInput, setPathInput] = useState('')
 
   // 분석 상태
-  const [analyzing, setAnalyzing] = useState(false)
   const [analyzeError, setAnalyzeError] = useState('')
 
   // 분석 결과
@@ -93,12 +94,11 @@ function AnalyzePage() {
 
   const handleAnalyze = async () => {
     if (!selectedPath) {
-      alert('분석할 폴더를 선택해주세요.')
+      alert(t.analyze.selectFolderPrompt)
       return
     }
 
     setStep('analyzing')
-    setAnalyzing(true)
     setAnalyzeError('')
 
     try {
@@ -108,15 +108,13 @@ function AnalyzePage() {
         setProjectInfo(result.projectInfo)
         setStep('review')
       } else {
-        setAnalyzeError(result.error || '분석에 실패했습니다.')
+        setAnalyzeError(result.error || t.errors.loadFailed)
         setStep('folder')
       }
     } catch (error) {
       console.error('Analyze error:', error)
-      setAnalyzeError('분석 중 오류가 발생했습니다.')
+      setAnalyzeError(t.errors.loadFailed)
       setStep('folder')
-    } finally {
-      setAnalyzing(false)
     }
   }
 
@@ -178,7 +176,7 @@ function AnalyzePage() {
       navigate('/projects')
     } catch (error) {
       console.error('Save error:', error)
-      alert('프로젝트 저장에 실패했습니다.')
+      alert(t.errors.saveFailed)
     } finally {
       setSaving(false)
     }
@@ -194,7 +192,7 @@ function AnalyzePage() {
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z" />
             </svg>
           </div>
-          <h2 className="text-2xl font-bold text-white mb-4">프로젝트를 분석하고 있습니다</h2>
+          <h2 className="text-2xl font-bold text-white mb-4">{t.analyze.analyzing}</h2>
           <p className="text-gray-400 mb-6">
             {selectedPath}
           </p>
@@ -203,7 +201,7 @@ function AnalyzePage() {
               <div className="h-full bg-gradient-to-r from-purple-500 to-pink-500 animate-[loading_2s_ease-in-out_infinite]" style={{ width: '60%' }}></div>
             </div>
           </div>
-          <p className="text-gray-500 mt-4 text-sm">README, package.json 등 프로젝트 파일을 분석 중...</p>
+          <p className="text-gray-500 mt-4 text-sm">{t.analyze.infoReadme}</p>
         </div>
       </div>
     )
@@ -222,7 +220,7 @@ function AnalyzePage() {
             <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
             </svg>
-            <span>폴더 다시 선택</span>
+            <span>{t.analyze.reanalyze}</span>
           </button>
           <div className="flex items-center gap-4">
             <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-green-500 to-emerald-500 flex items-center justify-center">
@@ -231,14 +229,14 @@ function AnalyzePage() {
               </svg>
             </div>
             <div>
-              <h1 className="text-3xl font-bold text-white">분석 완료</h1>
-              <p className="text-gray-400">추출된 정보를 확인하고 수정하세요</p>
+              <h1 className="text-3xl font-bold text-white">{t.analyze.analysisResult}</h1>
+              <p className="text-gray-400">{t.analyze.subtitle}</p>
             </div>
           </div>
 
           {/* 신뢰도 표시 */}
           <div className="mt-4 flex items-center gap-3">
-            <span className="text-gray-400 text-sm">분석 신뢰도:</span>
+            <span className="text-gray-400 text-sm">{t.analyze.confidence}:</span>
             <div className="flex-1 max-w-xs h-2 bg-gray-700 rounded-full overflow-hidden">
               <div
                 className="h-full bg-gradient-to-r from-green-500 to-emerald-500"
@@ -251,7 +249,7 @@ function AnalyzePage() {
           {/* 분석된 파일 */}
           {projectInfo.analyzedFiles && projectInfo.analyzedFiles.length > 0 && (
             <div className="mt-4">
-              <span className="text-gray-400 text-sm">분석된 파일: </span>
+              <span className="text-gray-400 text-sm">{t.analyze.analyzedFiles}: </span>
               <span className="text-gray-300 text-sm">{projectInfo.analyzedFiles.join(', ')}</span>
             </div>
           )}
@@ -267,12 +265,12 @@ function AnalyzePage() {
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
                 </svg>
               </div>
-              <h2 className="text-lg font-semibold text-white">기본 정보</h2>
+              <h2 className="text-lg font-semibold text-white">{t.projectForm.basicInfo}</h2>
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
               <div>
-                <label className="block text-sm font-medium text-gray-300 mb-2">프로젝트명</label>
+                <label className="block text-sm font-medium text-gray-300 mb-2">{t.projects.projectName}</label>
                 <input
                   type="text"
                   value={projectInfo.name}
@@ -281,7 +279,7 @@ function AnalyzePage() {
                 />
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-300 mb-2">고객사</label>
+                <label className="block text-sm font-medium text-gray-300 mb-2">{t.projects.client}</label>
                 <input
                   type="text"
                   value={projectInfo.client}
@@ -290,7 +288,7 @@ function AnalyzePage() {
                 />
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-300 mb-2">시작일</label>
+                <label className="block text-sm font-medium text-gray-300 mb-2">{t.projects.startDate}</label>
                 <DatePicker
                   value={projectInfo.startDate}
                   onChange={(value) => handleProjectInfoChange('startDate', value)}
@@ -298,7 +296,7 @@ function AnalyzePage() {
                 />
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-300 mb-2">종료일</label>
+                <label className="block text-sm font-medium text-gray-300 mb-2">{t.projects.endDate}</label>
                 <DatePicker
                   value={projectInfo.endDate}
                   onChange={(value) => handleProjectInfoChange('endDate', value)}
@@ -306,7 +304,7 @@ function AnalyzePage() {
                 />
               </div>
               <div className="md:col-span-2">
-                <label className="block text-sm font-medium text-gray-300 mb-2">프로젝트 설명</label>
+                <label className="block text-sm font-medium text-gray-300 mb-2">{t.projects.description}</label>
                 <textarea
                   rows={3}
                   value={projectInfo.description}
@@ -315,7 +313,7 @@ function AnalyzePage() {
                 />
               </div>
               <div className="md:col-span-2">
-                <label className="block text-sm font-medium text-gray-300 mb-2">수행 범위</label>
+                <label className="block text-sm font-medium text-gray-300 mb-2">{t.projects.scope}</label>
                 <textarea
                   rows={3}
                   value={projectInfo.scope}
@@ -335,7 +333,7 @@ function AnalyzePage() {
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
                   </svg>
                 </div>
-                <h2 className="text-lg font-semibold text-white">팀 구성</h2>
+                <h2 className="text-lg font-semibold text-white">{t.projectForm.teamInfo}</h2>
               </div>
               <button
                 type="button"
@@ -345,13 +343,13 @@ function AnalyzePage() {
                 <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
                 </svg>
-                팀원 추가
+                {t.projectForm.addTeamMember}
               </button>
             </div>
 
             {projectInfo.team.length === 0 ? (
               <div className="text-center py-8 border-2 border-dashed border-purple-500/20 rounded-xl">
-                <p className="text-gray-500">추출된 팀 정보가 없습니다. 팀원을 추가해주세요.</p>
+                <p className="text-gray-500">{t.common.noData}</p>
               </div>
             ) : (
               <div className="space-y-3">
@@ -362,21 +360,21 @@ function AnalyzePage() {
                     </div>
                     <input
                       type="text"
-                      placeholder="이름"
+                      placeholder={t.projectForm.memberName}
                       value={member.name}
                       onChange={(e) => updateTeamMember(index, 'name', e.target.value)}
                       className="flex-1 px-4 py-2 bg-[#1a1a2e] border border-purple-500/20 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:border-purple-500"
                     />
                     <input
                       type="text"
-                      placeholder="역할"
+                      placeholder={t.projectForm.memberRole}
                       value={member.role}
                       onChange={(e) => updateTeamMember(index, 'role', e.target.value)}
                       className="flex-1 px-4 py-2 bg-[#1a1a2e] border border-purple-500/20 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:border-purple-500"
                     />
                     <input
                       type="text"
-                      placeholder="담당 업무"
+                      placeholder={t.projectForm.memberResponsibility}
                       value={member.responsibility}
                       onChange={(e) => updateTeamMember(index, 'responsibility', e.target.value)}
                       className="flex-1 px-4 py-2 bg-[#1a1a2e] border border-purple-500/20 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:border-purple-500"
@@ -405,7 +403,7 @@ function AnalyzePage() {
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4" />
                   </svg>
                 </div>
-                <h2 className="text-lg font-semibold text-white">마일스톤</h2>
+                <h2 className="text-lg font-semibold text-white">{t.projectForm.milestoneInfo}</h2>
               </div>
               <button
                 type="button"
@@ -415,13 +413,13 @@ function AnalyzePage() {
                 <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
                 </svg>
-                마일스톤 추가
+                {t.projectForm.addMilestone}
               </button>
             </div>
 
             {projectInfo.milestones.length === 0 ? (
               <div className="text-center py-8 border-2 border-dashed border-purple-500/20 rounded-xl">
-                <p className="text-gray-500">추출된 마일스톤이 없습니다. 마일스톤을 추가해주세요.</p>
+                <p className="text-gray-500">{t.common.noData}</p>
               </div>
             ) : (
               <div className="space-y-3">
@@ -432,7 +430,7 @@ function AnalyzePage() {
                     </div>
                     <input
                       type="text"
-                      placeholder="마일스톤명"
+                      placeholder={t.projectForm.milestoneName}
                       value={milestone.name}
                       onChange={(e) => updateMilestone(index, 'name', e.target.value)}
                       className="flex-1 px-4 py-2 bg-[#1a1a2e] border border-purple-500/20 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:border-purple-500"
@@ -441,11 +439,11 @@ function AnalyzePage() {
                       value={milestone.date}
                       onChange={(value) => updateMilestone(index, 'date', value)}
                       className="w-44 px-4 py-2 bg-[#1a1a2e] border border-purple-500/20 rounded-lg text-white focus:outline-none focus:border-purple-500"
-                      placeholder="날짜 선택"
+                      placeholder={t.projectForm.milestoneDueDate}
                     />
                     <input
                       type="text"
-                      placeholder="산출물"
+                      placeholder={t.projectForm.milestoneDescription}
                       value={milestone.deliverables}
                       onChange={(e) => updateMilestone(index, 'deliverables', e.target.value)}
                       className="flex-1 px-4 py-2 bg-[#1a1a2e] border border-purple-500/20 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:border-purple-500"
@@ -472,7 +470,7 @@ function AnalyzePage() {
               onClick={() => setStep('folder')}
               className="px-6 py-3 text-gray-400 font-medium rounded-xl hover:bg-[#252540] transition-all"
             >
-              취소
+              {t.common.cancel}
             </button>
             <button
               onClick={handleSaveProject}
@@ -482,14 +480,14 @@ function AnalyzePage() {
               {saving ? (
                 <>
                   <div className="w-5 h-5 rounded-full border-2 border-white/30 border-t-white animate-spin"></div>
-                  저장 중...
+                  {t.common.loading}
                 </>
               ) : (
                 <>
                   <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
                   </svg>
-                  프로젝트로 저장
+                  {t.analyze.createProject}
                 </>
               )}
             </button>
@@ -511,7 +509,7 @@ function AnalyzePage() {
           <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
           </svg>
-          <span>프로젝트 목록</span>
+          <span>{t.nav.projects}</span>
         </button>
         <div className="flex items-center gap-4">
           <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-purple-500 to-pink-500 flex items-center justify-center">
@@ -520,8 +518,8 @@ function AnalyzePage() {
             </svg>
           </div>
           <div>
-            <h1 className="text-3xl font-bold text-white">프로젝트 폴더 분석</h1>
-            <p className="text-gray-400">프로젝트 폴더를 선택하면 자동으로 정보를 추출합니다</p>
+            <h1 className="text-3xl font-bold text-white">{t.analyze.title}</h1>
+            <p className="text-gray-400">{t.analyze.subtitle}</p>
           </div>
         </div>
       </div>
@@ -543,7 +541,7 @@ function AnalyzePage() {
               value={pathInput}
               onChange={(e) => setPathInput(e.target.value)}
               onKeyDown={handlePathInputKeyDown}
-              placeholder="경로를 입력하세요"
+              placeholder={t.common.search}
               className="input-dark pr-10"
             />
             <button
@@ -618,9 +616,9 @@ function AnalyzePage() {
         <div className="mt-6 pt-6 border-t border-purple-500/20">
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-gray-400 text-sm mb-1">선택된 폴더</p>
+              <p className="text-gray-400 text-sm mb-1">{t.analyze.selectedFolder}</p>
               <p className="text-white font-medium">
-                {selectedPath || currentPath || '폴더를 선택하세요'}
+                {selectedPath || currentPath || t.analyze.selectFolderPrompt}
               </p>
             </div>
             <div className="flex gap-3">
@@ -637,10 +635,10 @@ function AnalyzePage() {
                     <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
                     </svg>
-                    폴더 선택됨
+                    {t.analyze.folderSelected}
                   </>
                 ) : (
-                  '현재 폴더 선택'
+                  t.analyze.currentFolder
                 )}
               </button>
               <button
@@ -651,7 +649,7 @@ function AnalyzePage() {
                 <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
                 </svg>
-                분석 시작
+                {t.analyze.analyze}
               </button>
             </div>
           </div>
@@ -660,14 +658,14 @@ function AnalyzePage() {
 
       {/* 안내 */}
       <div className="mt-6 p-4 bg-blue-500/10 border border-blue-500/30 rounded-xl">
-        <h3 className="text-blue-400 font-medium mb-2">분석되는 항목 (무료 - API 비용 없음)</h3>
+        <h3 className="text-blue-400 font-medium mb-2">{t.analyze.infoTitle}</h3>
         <ul className="text-gray-400 text-sm space-y-1">
-          <li>• README.md: 프로젝트 설명, 기능 목록</li>
-          <li>• package.json / pom.xml / build.gradle: 프로젝트명, 버전, 의존성</li>
-          <li>• PRD.md: 프로젝트 요구사항, 목표, 기능 스펙</li>
-          <li>• CLAUDE.md: 프로젝트 개요, 아키텍처, 기술 스택</li>
-          <li>• WBS.md: 마일스톤, 단계별 작업, 산출물</li>
-          <li>• 폴더 구조: 프로젝트 타입 자동 감지 (React, Node.js, Java 등)</li>
+          <li>• {t.analyze.infoReadme}</li>
+          <li>• {t.analyze.infoPackage}</li>
+          <li>• {t.analyze.infoPrd}</li>
+          <li>• {t.analyze.infoClaude}</li>
+          <li>• {t.analyze.infoWbs}</li>
+          <li>• {t.analyze.infoStructure}</li>
         </ul>
       </div>
     </div>

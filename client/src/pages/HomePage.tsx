@@ -1,34 +1,21 @@
 import { useState, useEffect } from 'react'
 import { projectApi, templateApi, documentApi } from '../services/api'
+import { useLanguage } from '../contexts/LanguageContext'
 import type { Project, Template } from '../types'
 
 // Template type icons
 const templateIcons: Record<string, string> = {
-  '프로젝트 수행 계획서': '📋',
-  '요구사항정의서(PRD)': '📝',
-  'WBS': '📊',
-  '기본설계서': '🏗️',
-  '상세설계서': '📐',
-  '중간보고서': '📈',
-  '테스트결과서': '✅',
-  '종료보고서': '📑',
-  '사용자 매뉴얼': '📖',
-  '운영자 매뉴얼': '🔧',
+  'prd': '📝',
+  'plan': '📋',
+  'wbs': '📊',
+  'design': '🏗️',
+  'detail': '📐',
+  'interim': '📈',
+  'test': '✅',
+  'final': '📑',
+  'user-manual': '📖',
+  'admin-manual': '🔧',
 }
-
-// Default template options when no templates are uploaded
-const defaultTemplateOptions = [
-  { id: 'prd', name: '요구사항정의서(PRD)', description: '기능/비기능 요구사항 정의' },
-  { id: 'plan', name: '프로젝트 수행 계획서', description: '프로젝트 개요, 일정, 팀 구성' },
-  { id: 'wbs', name: 'WBS', description: '작업분해구조, 마일스톤' },
-  { id: 'design', name: '기본설계서', description: '시스템 설계, 아키텍처, ERD' },
-  { id: 'detail', name: '상세설계서', description: '화면설계, 인터페이스 정의' },
-  { id: 'interim', name: '중간보고서', description: '진행현황, 이슈, 계획' },
-  { id: 'test', name: '테스트결과서', description: '테스트 수행 결과' },
-  { id: 'final', name: '종료보고서', description: '프로젝트 수행 결과' },
-  { id: 'user-manual', name: '사용자 매뉴얼', description: '시스템 사용자 가이드' },
-  { id: 'admin-manual', name: '운영자 매뉴얼', description: '시스템 운영자 가이드' },
-]
 
 type OutputFormat = 'pptx' | 'docx' | 'pdf'
 
@@ -41,6 +28,7 @@ interface GeneratedFile {
 }
 
 function HomePage() {
+  const { t } = useLanguage()
   const [documentTitle, setDocumentTitle] = useState('')
   const [selectedTemplate, setSelectedTemplate] = useState<string | null>(null)
   const [outputFormat, setOutputFormat] = useState<OutputFormat>('pptx')
@@ -49,6 +37,20 @@ function HomePage() {
   const [projects, setProjects] = useState<Project[]>([])
   const [templates, setTemplates] = useState<Template[]>([])
   const [selectedProject, setSelectedProject] = useState<string>('')
+
+  // Default template options with i18n
+  const defaultTemplateOptions = [
+    { id: 'prd', name: t.documentTypes.prd, description: t.documentDescriptions.prd },
+    { id: 'plan', name: t.documentTypes.plan, description: t.documentDescriptions.plan },
+    { id: 'wbs', name: t.documentTypes.wbs, description: t.documentDescriptions.wbs },
+    { id: 'design', name: t.documentTypes.design, description: t.documentDescriptions.design },
+    { id: 'detail', name: t.documentTypes.detail, description: t.documentDescriptions.detail },
+    { id: 'interim', name: t.documentTypes.interim, description: t.documentDescriptions.interim },
+    { id: 'test', name: t.documentTypes.test, description: t.documentDescriptions.test },
+    { id: 'final', name: t.documentTypes.final, description: t.documentDescriptions.final },
+    { id: 'user-manual', name: t.documentTypes.userManual, description: t.documentDescriptions.userManual },
+    { id: 'admin-manual', name: t.documentTypes.adminManual, description: t.documentDescriptions.adminManual },
+  ]
 
   useEffect(() => {
     loadData()
@@ -73,7 +75,7 @@ function HomePage() {
 
   const handleGenerate = async () => {
     if (!documentTitle.trim() || !selectedTemplate) {
-      alert('문서 제목과 템플릿을 선택해주세요.')
+      alert(t.errors.selectTemplateAndTitle)
       return
     }
 
@@ -83,26 +85,26 @@ function HomePage() {
     try {
       // If a project is selected and templates are available, generate real documents
       if (selectedProject && templates.length > 0) {
-        const template = templates.find((t: Template) => t.id === selectedTemplate)
+        const template = templates.find((tpl: Template) => tpl.id === selectedTemplate)
         if (template) {
           const blob = await documentApi.generate(selectedProject, selectedTemplate, outputFormat)
           const filename = `${documentTitle}_${template.documentType}.${outputFormat}`
           newFiles.push({
             name: filename,
             format: outputFormat,
-            language: '한국어',
+            language: t.nav.home,
             blob,
           })
         }
       } else {
         // Demo mode - create placeholder files
-        const template = defaultTemplateOptions.find(t => t.id === selectedTemplate)
+        const template = defaultTemplateOptions.find(tpl => tpl.id === selectedTemplate)
         if (template) {
           const filename = `${documentTitle}_${template.name}.${outputFormat}`
           newFiles.push({
             name: filename,
             format: outputFormat,
-            language: '한국어',
+            language: t.nav.home,
           })
         }
       }
@@ -110,7 +112,7 @@ function HomePage() {
       setGeneratedFiles(newFiles)
     } catch (error) {
       console.error('Failed to generate documents:', error)
-      alert('문서 생성에 실패했습니다.')
+      alert(t.errors.generateFailed)
     } finally {
       setGenerating(false)
     }
@@ -127,7 +129,7 @@ function HomePage() {
       window.URL.revokeObjectURL(url)
       document.body.removeChild(a)
     } else {
-      alert('데모 모드: 실제 문서를 생성하려면 프로젝트와 템플릿을 먼저 등록해주세요.')
+      alert(t.home.demoMode)
     }
   }
 
@@ -137,21 +139,21 @@ function HomePage() {
       <div className="text-center py-6">
         <h1 className="text-3xl font-bold text-white mb-2 flex items-center justify-center gap-3">
           <span className="text-3xl">📄</span>
-          문서 자동 생성기
+          {t.home.title}
         </h1>
-        <p className="text-gray-400">버튼 클릭 한 번으로 전문적인 문서를 생성하세요</p>
+        <p className="text-gray-400">{t.home.subtitle}</p>
       </div>
 
       {/* Document Title Input */}
       <div className="card p-6">
         <div className="section-title">
           <span>📝</span>
-          <span>문서 제목</span>
+          <span>{t.home.documentTitle}</span>
         </div>
         <input
           type="text"
           className="input-dark"
-          placeholder="예: 동국제강 공조설비 정비관리 시스템"
+          placeholder={t.home.documentTitlePlaceholder}
           value={documentTitle}
           onChange={(e) => setDocumentTitle(e.target.value)}
         />
@@ -162,14 +164,14 @@ function HomePage() {
         <div className="card p-6">
           <div className="section-title">
             <span>📁</span>
-            <span>프로젝트 선택 (선택사항)</span>
+            <span>{t.home.projectSelection}</span>
           </div>
           <select
             className="input-dark"
             value={selectedProject}
             onChange={(e) => setSelectedProject(e.target.value)}
           >
-            <option value="">프로젝트를 선택하세요 (선택 안함)</option>
+            <option value="">{t.home.selectProject}</option>
             {projects.map((project) => (
               <option key={project.id} value={project.id}>
                 {project.name} - {project.client}
@@ -183,18 +185,18 @@ function HomePage() {
       <div className="card p-6">
         <div className="section-title">
           <span>📋</span>
-          <span>템플릿 선택</span>
+          <span>{t.home.templateSelection}</span>
           <div className="tooltip-container ml-2">
             <svg className="w-4 h-4 text-gray-500 cursor-help" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
             </svg>
-            <div className="tooltip">하나의 템플릿만 선택할 수 있습니다</div>
+            <div className="tooltip">{t.home.templateTooltip}</div>
           </div>
         </div>
         <div className="template-grid">
           {(templates.length > 0 ? templates : defaultTemplateOptions).map((template) => {
             const isTemplateType = 'documentType' in template
-            const id = isTemplateType ? template.id : template.id
+            const id = template.id
             const name = isTemplateType ? (template as Template).documentType : template.name
             const desc = isTemplateType ? (template as Template).name : (template as typeof defaultTemplateOptions[0]).description
             const isSelected = selectedTemplate === id
@@ -209,7 +211,7 @@ function HomePage() {
                   className={`template-card ${isSelected ? 'selected' : ''}`}
                 >
                   <div className="icon-box mx-auto mb-3 bg-gradient-to-br from-purple-500/20 to-pink-500/20">
-                    <span>{templateIcons[name] || '📄'}</span>
+                    <span>{templateIcons[id] || '📄'}</span>
                   </div>
                   <div className="font-medium text-white text-sm mb-1">{name}</div>
                   <div className="text-xs text-gray-500 line-clamp-2">{desc}</div>
@@ -232,12 +234,12 @@ function HomePage() {
       <div className="card p-6">
         <div className="section-title">
           <span>💾</span>
-          <span>출력 형식</span>
+          <span>{t.home.outputFormat}</span>
           <div className="tooltip-container ml-2">
             <svg className="w-4 h-4 text-gray-500 cursor-help" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
             </svg>
-            <div className="tooltip">원하는 파일 형식을 선택하세요</div>
+            <div className="tooltip">{t.home.formatTooltip}</div>
           </div>
         </div>
         <div className="flex gap-4 justify-center">
@@ -252,7 +254,7 @@ function HomePage() {
               <div className="font-semibold text-white">PPT</div>
               <div className="text-xs text-gray-500">.pptx</div>
             </div>
-            <div className="tooltip tooltip-bottom">PowerPoint 프레젠테이션</div>
+            <div className="tooltip tooltip-bottom">PowerPoint</div>
           </div>
           <div className="tooltip-container">
             <div
@@ -265,7 +267,7 @@ function HomePage() {
               <div className="font-semibold text-white">DOC</div>
               <div className="text-xs text-gray-500">.docx</div>
             </div>
-            <div className="tooltip tooltip-bottom">Word 문서</div>
+            <div className="tooltip tooltip-bottom">Word</div>
           </div>
           <div className="tooltip-container">
             <div
@@ -278,7 +280,7 @@ function HomePage() {
               <div className="font-semibold text-white">PDF</div>
               <div className="text-xs text-gray-500">.pdf</div>
             </div>
-            <div className="tooltip tooltip-bottom">PDF 문서</div>
+            <div className="tooltip tooltip-bottom">PDF</div>
           </div>
         </div>
       </div>
@@ -292,12 +294,12 @@ function HomePage() {
         {generating ? (
           <>
             <div className="w-5 h-5 rounded-full border-2 border-white/30 border-t-white animate-spin"></div>
-            <span>생성 중...</span>
+            <span>{t.home.generating}</span>
           </>
         ) : (
           <>
             <span>✨</span>
-            <span>문서 생성하기</span>
+            <span>{t.home.generateButton}</span>
           </>
         )}
       </button>
@@ -307,7 +309,7 @@ function HomePage() {
         <div className="card p-6">
           <div className="section-title">
             <span>📂</span>
-            <span>생성된 파일</span>
+            <span>{t.home.generatedFiles}</span>
           </div>
           <div className="space-y-3">
             {generatedFiles.map((file, index) => (

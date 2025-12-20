@@ -1,12 +1,8 @@
+import { useState } from 'react'
 import { Outlet, Link, useLocation, useNavigate } from 'react-router-dom'
 import { useAuth } from '../contexts/AuthContext'
-
-const navItems = [
-  { path: '/', label: '홈', icon: '🏠' },
-  { path: '/projects', label: '프로젝트', icon: '📁' },
-  { path: '/projects/analyze', label: '폴더 분석', icon: '📂' },
-  { path: '/templates', label: '템플릿', icon: '📄' },
-]
+import { useLanguage, languageInfo } from '../contexts/LanguageContext'
+import type { Language } from '../i18n/translations'
 
 // DK Logo Component
 const DKLogo = () => (
@@ -26,10 +22,24 @@ function Layout() {
   const location = useLocation()
   const navigate = useNavigate()
   const { user, logout } = useAuth()
+  const { language, setLanguage, t } = useLanguage()
+  const [showLanguageMenu, setShowLanguageMenu] = useState(false)
+
+  const navItems = [
+    { path: '/', label: t.nav.home, icon: '🏠' },
+    { path: '/projects', label: t.nav.projects, icon: '📁' },
+    { path: '/projects/analyze', label: t.nav.folderAnalysis, icon: '📂' },
+    { path: '/templates', label: t.nav.templates, icon: '📄' },
+  ]
 
   const handleLogout = () => {
     logout()
     navigate('/login')
+  }
+
+  const handleLanguageChange = (lang: Language) => {
+    setLanguage(lang)
+    setShowLanguageMenu(false)
   }
 
   return (
@@ -63,7 +73,7 @@ function Layout() {
 
       {/* Navigation */}
       <nav className="fixed top-0 left-0 right-0 z-50 glass-dark">
-        <div className="max-w-5xl mx-auto px-6">
+        <div className="max-w-6xl mx-auto px-6">
           <div className="flex justify-between h-16">
             {/* Logo */}
             <Link to="/" className="flex items-center gap-3 group">
@@ -87,7 +97,7 @@ function Layout() {
                   <Link
                     key={item.path}
                     to={item.path}
-                    className={`flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-medium transition-all duration-300 ${
+                    className={`flex items-center gap-2 px-3 py-2 rounded-xl text-sm font-medium transition-all duration-300 ${
                       isActive
                         ? 'bg-gradient-to-r from-purple-500 to-pink-500 text-white shadow-lg shadow-purple-500/30'
                         : 'text-gray-400 hover:bg-[#1a1a2e] hover:text-white'
@@ -99,10 +109,58 @@ function Layout() {
                 )
               })}
 
+              {/* Language Selector */}
+              <div className="relative ml-2">
+                <button
+                  onClick={() => setShowLanguageMenu(!showLanguageMenu)}
+                  className="flex items-center gap-1.5 px-3 py-2 rounded-xl text-sm font-medium text-gray-400 hover:bg-[#1a1a2e] hover:text-white transition-all border border-purple-500/20"
+                >
+                  <span className="text-lg">{languageInfo[language].flag}</span>
+                  <span className="hidden sm:inline">{languageInfo[language].nativeName}</span>
+                  <svg className={`w-4 h-4 transition-transform ${showLanguageMenu ? 'rotate-180' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                  </svg>
+                </button>
+
+                {/* Language Dropdown */}
+                {showLanguageMenu && (
+                  <>
+                    <div
+                      className="fixed inset-0 z-40"
+                      onClick={() => setShowLanguageMenu(false)}
+                    ></div>
+                    <div className="absolute right-0 mt-2 w-48 bg-[#1a1a2e] border border-purple-500/20 rounded-xl shadow-xl z-50 overflow-hidden">
+                      {(Object.keys(languageInfo) as Language[]).map((lang) => (
+                        <button
+                          key={lang}
+                          onClick={() => handleLanguageChange(lang)}
+                          className={`w-full flex items-center gap-3 px-4 py-3 text-sm transition-all ${
+                            language === lang
+                              ? 'bg-purple-500/20 text-purple-400'
+                              : 'text-gray-400 hover:bg-[#252540] hover:text-white'
+                          }`}
+                        >
+                          <span className="text-xl">{languageInfo[lang].flag}</span>
+                          <div className="flex flex-col items-start">
+                            <span className="font-medium">{languageInfo[lang].nativeName}</span>
+                            <span className="text-xs text-gray-500">{languageInfo[lang].name}</span>
+                          </div>
+                          {language === lang && (
+                            <svg className="w-4 h-4 ml-auto text-purple-400" fill="currentColor" viewBox="0 0 20 20">
+                              <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                            </svg>
+                          )}
+                        </button>
+                      ))}
+                    </div>
+                  </>
+                )}
+              </div>
+
               {/* User Info & Logout */}
-              <div className="flex items-center gap-3 ml-4 pl-4 border-l border-purple-500/20">
+              <div className="flex items-center gap-3 ml-2 pl-4 border-l border-purple-500/20">
                 <span className="text-sm text-gray-400">
-                  <span className="text-purple-400">{user?.username}</span>님
+                  <span className="text-purple-400">{user?.username}</span>
                 </span>
                 <button
                   onClick={handleLogout}
@@ -111,7 +169,7 @@ function Layout() {
                   <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
                   </svg>
-                  <span>로그아웃</span>
+                  <span className="hidden sm:inline">{t.nav.logout}</span>
                 </button>
               </div>
             </div>
@@ -128,7 +186,7 @@ function Layout() {
 
       {/* Footer */}
       <footer className="relative z-10 py-6 text-center">
-        <p className="text-sm text-gray-500">© 2025 Dongkuk Systems. All rights reserved.</p>
+        <p className="text-sm text-gray-500">{t.footer.copyright}</p>
       </footer>
     </div>
   )

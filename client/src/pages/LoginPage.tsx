@@ -1,6 +1,8 @@
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useAuth } from '../contexts/AuthContext'
+import { useLanguage, languageInfo } from '../contexts/LanguageContext'
+import type { Language } from '../i18n/translations'
 
 // DK Logo Component
 const DKLogo = () => (
@@ -21,8 +23,15 @@ function LoginPage() {
   const [password, setPassword] = useState('')
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)
+  const [showLanguageMenu, setShowLanguageMenu] = useState(false)
   const navigate = useNavigate()
   const { login } = useAuth()
+  const { language, setLanguage, t } = useLanguage()
+
+  const handleLanguageChange = (lang: Language) => {
+    setLanguage(lang)
+    setShowLanguageMenu(false)
+  }
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -37,7 +46,7 @@ function LoginPage() {
     if (success) {
       navigate('/')
     } else {
-      setError('아이디 또는 비밀번호가 올바르지 않습니다.')
+      setError(t.login.invalidCredentials)
     }
 
     setLoading(false)
@@ -45,6 +54,55 @@ function LoginPage() {
 
   return (
     <div className="min-h-screen bg-[#0f0f1a] flex items-center justify-center relative overflow-hidden">
+      {/* Language Selector - Top Right */}
+      <div className="fixed top-4 right-4 z-50">
+        <div className="relative">
+          <button
+            onClick={() => setShowLanguageMenu(!showLanguageMenu)}
+            className="flex items-center gap-1.5 px-3 py-2 rounded-xl text-sm font-medium text-gray-400 hover:bg-[#1a1a2e] hover:text-white transition-all border border-purple-500/20 bg-[#1a1a2e]/80 backdrop-blur-sm"
+          >
+            <span className="text-lg">{languageInfo[language].flag}</span>
+            <span className="hidden sm:inline">{languageInfo[language].nativeName}</span>
+            <svg className={`w-4 h-4 transition-transform ${showLanguageMenu ? 'rotate-180' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+            </svg>
+          </button>
+
+          {showLanguageMenu && (
+            <>
+              <div
+                className="fixed inset-0 z-40"
+                onClick={() => setShowLanguageMenu(false)}
+              ></div>
+              <div className="absolute right-0 mt-2 w-48 bg-[#1a1a2e] border border-purple-500/20 rounded-xl shadow-xl z-50 overflow-hidden">
+                {(Object.keys(languageInfo) as Language[]).map((lang) => (
+                  <button
+                    key={lang}
+                    onClick={() => handleLanguageChange(lang)}
+                    className={`w-full flex items-center gap-3 px-4 py-3 text-sm transition-all ${
+                      language === lang
+                        ? 'bg-purple-500/20 text-purple-400'
+                        : 'text-gray-400 hover:bg-[#252540] hover:text-white'
+                    }`}
+                  >
+                    <span className="text-xl">{languageInfo[lang].flag}</span>
+                    <div className="flex flex-col items-start">
+                      <span className="font-medium">{languageInfo[lang].nativeName}</span>
+                      <span className="text-xs text-gray-500">{languageInfo[lang].name}</span>
+                    </div>
+                    {language === lang && (
+                      <svg className="w-4 h-4 ml-auto text-purple-400" fill="currentColor" viewBox="0 0 20 20">
+                        <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                      </svg>
+                    )}
+                  </button>
+                ))}
+              </div>
+            </>
+          )}
+        </div>
+      </div>
+
       {/* Background Pattern */}
       <div className="fixed inset-0 z-0">
         {/* Gradient Orbs */}
@@ -91,14 +149,14 @@ function LoginPage() {
             {/* Username */}
             <div>
               <label className="block text-sm font-medium text-gray-300 mb-2">
-                아이디
+                {t.login.username}
               </label>
               <input
                 type="text"
                 value={username}
                 onChange={(e) => setUsername(e.target.value)}
                 className="input-dark"
-                placeholder="아이디를 입력하세요"
+                placeholder={t.login.username}
                 required
               />
             </div>
@@ -106,14 +164,14 @@ function LoginPage() {
             {/* Password */}
             <div>
               <label className="block text-sm font-medium text-gray-300 mb-2">
-                비밀번호
+                {t.login.password}
               </label>
               <input
                 type="password"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 className="input-dark"
-                placeholder="비밀번호를 입력하세요"
+                placeholder={t.login.password}
                 required
               />
             </div>
@@ -134,14 +192,14 @@ function LoginPage() {
               {loading ? (
                 <>
                   <div className="w-5 h-5 rounded-full border-2 border-white/30 border-t-white animate-spin"></div>
-                  <span>로그인 중...</span>
+                  <span>{t.login.loggingIn}</span>
                 </>
               ) : (
                 <>
                   <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 16l-4-4m0 0l4-4m-4 4h14m-5 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h7a3 3 0 013 3v1" />
                   </svg>
-                  <span>로그인</span>
+                  <span>{t.login.loginButton}</span>
                 </>
               )}
             </button>
@@ -150,7 +208,7 @@ function LoginPage() {
           {/* Footer */}
           <div className="mt-8 pt-6 border-t border-purple-500/20 text-center">
             <p className="text-xs text-gray-500">
-              © 2026 Dongkuk Systems. All rights reserved.
+              {t.footer.copyright}
             </p>
           </div>
         </div>
