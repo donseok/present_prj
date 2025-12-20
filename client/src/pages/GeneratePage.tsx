@@ -1,9 +1,11 @@
 import { useState, useEffect } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import { projectApi, templateApi, documentApi } from '../services/api'
+import FolderPicker from '../components/FolderPicker'
 import type { Project, Template } from '../types'
 
 type Language = 'ko' | 'en' | 'vi'
+type SaveMode = 'download' | 'folder'
 
 function GeneratePage() {
   const { projectId } = useParams()
@@ -15,6 +17,9 @@ function GeneratePage() {
   const [loading, setLoading] = useState(true)
   const [generatedCount, setGeneratedCount] = useState(0)
   const [language, setLanguage] = useState<Language>('ko')
+  const [saveMode, setSaveMode] = useState<SaveMode>('download')
+  const [savePath, setSavePath] = useState('')
+  const [generatedFiles, setGeneratedFiles] = useState<string[]>([])
 
   useEffect(() => {
     if (projectId) {
@@ -56,30 +61,56 @@ function GeneratePage() {
   const handleGenerate = async () => {
     if (!project || selectedTemplates.length === 0) return
 
+    if (saveMode === 'folder' && !savePath) {
+      alert('저장할 폴더를 선택해주세요.')
+      return
+    }
+
     setGenerating(true)
     setGeneratedCount(0)
+    setGeneratedFiles([])
 
     try {
+      const files: string[] = []
+
       for (let i = 0; i < selectedTemplates.length; i++) {
         const templateId = selectedTemplates[i]
-        const blob = await documentApi.generate(project.id, templateId)
         const template = templates.find((t) => t.id === templateId)
-        const langSuffix = language === 'ko' ? '' : `_${language.toUpperCase()}`
-        const filename = `${project.name}_${template?.documentType || 'document'}${langSuffix}.${template?.format || 'docx'}`
 
-        const url = window.URL.createObjectURL(blob)
-        const a = document.createElement('a')
-        a.href = url
-        a.download = filename
-        document.body.appendChild(a)
-        a.click()
-        window.URL.revokeObjectURL(url)
-        document.body.removeChild(a)
+        if (saveMode === 'folder') {
+          // 서버에 저장
+          const result = await documentApi.generateAndSave(
+            project.id,
+            templateId,
+            savePath,
+            template?.format
+          )
+          files.push(result.filename)
+        } else {
+          // 브라우저 다운로드
+          const blob = await documentApi.generate(project.id, templateId)
+          const langSuffix = language === 'ko' ? '' : `_${language.toUpperCase()}`
+          const filename = `${project.name}_${template?.documentType || 'document'}${langSuffix}.${template?.format || 'docx'}`
+
+          const url = window.URL.createObjectURL(blob)
+          const a = document.createElement('a')
+          a.href = url
+          a.download = filename
+          document.body.appendChild(a)
+          a.click()
+          window.URL.revokeObjectURL(url)
+          document.body.removeChild(a)
+
+          files.push(filename)
+        }
 
         setGeneratedCount(i + 1)
       }
+
+      setGeneratedFiles(files)
     } catch (error) {
       console.error('Failed to generate documents:', error)
+      alert('문서 생성 중 오류가 발생했습니다.')
     } finally {
       setGenerating(false)
     }
@@ -203,6 +234,62 @@ function GeneratePage() {
         </div>
       </div>
 
+      {/* Save Location */}
+      <div className="card p-6">
+        <div className="flex items-center gap-3 mb-6">
+          <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-cyan-500 to-blue-500 flex items-center justify-center text-white">
+            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 19a2 2 0 01-2-2V7a2 2 0 012-2h4l2 2h4a2 2 0 012 2v1M5 19h14a2 2 0 002-2v-5a2 2 0 00-2-2H9a2 2 0 00-2 2v5a2 2 0 01-2 2z" />
+            </svg>
+          </div>
+          <div>
+            <h2 className="text-lg font-semibold text-white">저장 위치</h2>
+            <p className="text-sm text-gray-400">문서를 저장할 방식을 선택하세요</p>
+          </div>
+        </div>
+
+        <div className="flex gap-3 mb-4">
+          <button
+            onClick={() => setSaveMode('download')}
+            className={`flex-1 flex items-center justify-center gap-2 px-4 py-3 rounded-xl transition-all ${
+              saveMode === 'download'
+                ? 'bg-gradient-to-r from-purple-500 to-pink-500 text-white'
+                : 'bg-[#1a1a2e] text-gray-400 hover:bg-[#252540] border border-purple-500/20'
+            }`}
+          >
+            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+            </svg>
+            <span className="font-medium">브라우저 다운로드</span>
+          </button>
+          <button
+            onClick={() => setSaveMode('folder')}
+            className={`flex-1 flex items-center justify-center gap-2 px-4 py-3 rounded-xl transition-all ${
+              saveMode === 'folder'
+                ? 'bg-gradient-to-r from-purple-500 to-pink-500 text-white'
+                : 'bg-[#1a1a2e] text-gray-400 hover:bg-[#252540] border border-purple-500/20'
+            }`}
+          >
+            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-6l-2-2H5a2 2 0 00-2 2z" />
+            </svg>
+            <span className="font-medium">폴더에 저장</span>
+          </button>
+        </div>
+
+        {saveMode === 'folder' && (
+          <div>
+            <label className="block text-sm font-medium text-gray-300 mb-2">저장 폴더 선택</label>
+            <FolderPicker
+              value={savePath}
+              onChange={setSavePath}
+              placeholder="저장할 폴더를 선택하세요"
+              className="input-dark"
+            />
+          </div>
+        )}
+      </div>
+
       {/* Template Selection */}
       <div className="card p-6">
         <div className="flex items-center justify-between mb-6">
@@ -297,11 +384,42 @@ function GeneratePage() {
         )}
       </div>
 
+      {/* Generated Files Result */}
+      {generatedFiles.length > 0 && (
+        <div className="card p-6 bg-green-500/10 border border-green-500/30">
+          <div className="flex items-center gap-3 mb-4">
+            <div className="w-10 h-10 rounded-full bg-green-500/20 flex items-center justify-center">
+              <svg className="w-5 h-5 text-green-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+              </svg>
+            </div>
+            <div>
+              <h3 className="text-lg font-semibold text-green-400">문서 생성 완료!</h3>
+              <p className="text-sm text-gray-400">
+                {saveMode === 'folder'
+                  ? `${generatedFiles.length}개의 문서가 ${savePath}에 저장되었습니다.`
+                  : `${generatedFiles.length}개의 문서가 다운로드되었습니다.`}
+              </p>
+            </div>
+          </div>
+          <div className="space-y-2">
+            {generatedFiles.map((file, index) => (
+              <div key={index} className="flex items-center gap-2 text-sm text-gray-300">
+                <svg className="w-4 h-4 text-green-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                </svg>
+                <span>{file}</span>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
       {/* Generate Button */}
       <div className="flex justify-end">
         <button
           onClick={handleGenerate}
-          disabled={generating || selectedTemplates.length === 0}
+          disabled={generating || selectedTemplates.length === 0 || (saveMode === 'folder' && !savePath)}
           className="flex items-center gap-3 px-8 py-4 bg-gradient-to-r from-purple-500 to-pink-500 text-white font-semibold rounded-xl shadow-lg shadow-purple-500/30 hover:shadow-xl hover:shadow-purple-500/40 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
         >
           {generating ? (

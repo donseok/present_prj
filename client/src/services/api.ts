@@ -1,5 +1,5 @@
 import axios from 'axios'
-import type { Project, Template } from '../types'
+import type { Project, Template, AnalyzedProjectInfo, BrowseResult } from '../types'
 
 const api = axios.create({
   baseURL: '/api',
@@ -71,6 +71,38 @@ export const documentApi = {
       { projectId, templateId },
       { responseType: 'blob' }
     )
+    return response.data
+  },
+
+  generateAndSave: async (
+    projectId: string,
+    templateId: string,
+    savePath: string,
+    format?: string
+  ): Promise<{ success: boolean; filePath: string; filename: string }> => {
+    const response = await api.post('/documents/generate-and-save', {
+      projectId,
+      templateId,
+      savePath,
+      format,
+    })
+    return response.data
+  },
+}
+
+export const analyzeApi = {
+  getDrives: async (): Promise<string[]> => {
+    const response = await api.get('/analyze/drives')
+    return response.data.drives
+  },
+
+  browse: async (path?: string): Promise<BrowseResult> => {
+    const response = await api.get('/analyze/browse', { params: { path } })
+    return response.data
+  },
+
+  analyzeFolder: async (folderPath: string): Promise<{ success: boolean; projectInfo?: AnalyzedProjectInfo; error?: string }> => {
+    const response = await api.post('/analyze/folder', { folderPath })
     return response.data
   },
 }

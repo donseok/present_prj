@@ -49,4 +49,33 @@ export interface Template {
 export interface DataStore {
   projects: Project[]
   templates: Template[]
+  settings?: AppSettings
+}
+
+export interface AppSettings {
+  claudeApiKey?: string
+}
+
+export interface AnalyzedProjectInfo {
+  name: string
+  client: string
+  description: string
+  scope: string
+  startDate: string
+  endDate: string
+  status: string
+  team: TeamMember[]
+  milestones: Milestone[]
+  requirements: {
+    functional: Requirement[]
+    nonFunctional: Requirement[]
+  }
+  analyzedFiles: string[]
+  confidence: number
+}
+
+export interface FolderAnalysisResult {
+  success: boolean
+  projectInfo?: AnalyzedProjectInfo
+  error?: string
 }

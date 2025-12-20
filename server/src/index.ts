@@ -3,6 +3,7 @@ import cors from 'cors'
 import projectRoutes from './routes/projects.js'
 import templateRoutes from './routes/templates.js'
 import documentRoutes from './routes/documents.js'
+import analyzeRoutes from './routes/analyze.js'
 
 const app = express()
 const PORT = process.env.PORT || 4000
@@ -14,6 +15,7 @@ app.use(express.json())
 app.use('/api/projects', projectRoutes)
 app.use('/api/templates', templateRoutes)
 app.use('/api/documents', documentRoutes)
+app.use('/api/analyze', analyzeRoutes)
 
 // Health check
 app.get('/api/health', (_req, res) => {

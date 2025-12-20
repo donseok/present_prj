@@ -4,6 +4,7 @@ import { useAuth } from '../contexts/AuthContext'
 const navItems = [
   { path: '/', label: '홈', icon: '🏠' },
   { path: '/projects', label: '프로젝트', icon: '📁' },
+  { path: '/projects/analyze', label: '폴더 분석', icon: '📂' },
   { path: '/templates', label: '템플릿', icon: '📄' },
 ]
 
@@ -127,13 +128,7 @@ function Layout() {
 
       {/* Footer */}
       <footer className="relative z-10 py-6 text-center">
-        <div className="flex items-center justify-center gap-2 mb-2">
-          <DKLogo />
-          <span className="text-white font-semibold">DocuGen</span>
-          <span className="text-xs text-gray-500">(다큐젠)</span>
-        </div>
-        <p className="text-sm text-gray-500">© 2026 Dongkuk Systems. All rights reserved.</p>
-        <p className="text-xs text-gray-600 mt-1">DocuGen - Smart Document Generator</p>
+        <p className="text-sm text-gray-500">© 2025 Dongkuk Systems. All rights reserved.</p>
       </footer>
     </div>
   )

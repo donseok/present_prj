@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import { projectApi } from '../services/api'
+import DatePicker from '../components/DatePicker'
 import type { Project, TeamMember, Milestone } from '../types'
 
 const emptyProject: Omit<Project, 'id' | 'createdAt' | 'updatedAt'> = {
@@ -175,24 +176,24 @@ function ProjectFormPage() {
               <label className="block text-sm font-medium text-gray-300 mb-2">
                 시작일 <span className="text-pink-500">*</span>
               </label>
-              <input
-                type="date"
-                required
+              <DatePicker
                 value={project.startDate}
-                onChange={(e) => handleChange('startDate', e.target.value)}
+                onChange={(value) => handleChange('startDate', value)}
+                required
                 className="input-dark"
+                placeholder="YYYY-MM-DD (더블클릭으로 달력 열기)"
               />
             </div>
             <div>
               <label className="block text-sm font-medium text-gray-300 mb-2">
                 종료일 <span className="text-pink-500">*</span>
               </label>
-              <input
-                type="date"
-                required
+              <DatePicker
                 value={project.endDate}
-                onChange={(e) => handleChange('endDate', e.target.value)}
+                onChange={(value) => handleChange('endDate', value)}
+                required
                 className="input-dark"
+                placeholder="YYYY-MM-DD (더블클릭으로 달력 열기)"
               />
             </div>
             <div className="md:col-span-2">
@@ -339,11 +340,11 @@ function ProjectFormPage() {
                     onChange={(e) => updateMilestone(index, 'name', e.target.value)}
                     className="flex-1 px-4 py-2 bg-[#1a1a2e] border border-purple-500/20 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:border-purple-500"
                   />
-                  <input
-                    type="date"
+                  <DatePicker
                     value={milestone.date}
-                    onChange={(e) => updateMilestone(index, 'date', e.target.value)}
+                    onChange={(value) => updateMilestone(index, 'date', value)}
                     className="w-44 px-4 py-2 bg-[#1a1a2e] border border-purple-500/20 rounded-lg text-white focus:outline-none focus:border-purple-500"
+                    placeholder="날짜 선택"
                   />
                   <input
                     type="text"

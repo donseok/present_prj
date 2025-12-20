@@ -7,6 +7,7 @@ import ProjectsPage from './pages/ProjectsPage'
 import ProjectFormPage from './pages/ProjectFormPage'
 import TemplatesPage from './pages/TemplatesPage'
 import GeneratePage from './pages/GeneratePage'
+import AnalyzePage from './pages/AnalyzePage'
 
 // Protected Route Component
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
@@ -44,6 +45,7 @@ function AppRoutes() {
         <Route path="projects" element={<ProjectsPage />} />
         <Route path="projects/new" element={<ProjectFormPage />} />
         <Route path="projects/:id" element={<ProjectFormPage />} />
+        <Route path="projects/analyze" element={<AnalyzePage />} />
         <Route path="templates" element={<TemplatesPage />} />
         <Route path="generate/:projectId" element={<GeneratePage />} />
       </Route>

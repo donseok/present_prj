@@ -1,7 +1,7 @@
 import fs from 'fs/promises'
 import path from 'path'
 import { fileURLToPath } from 'url'
-import type { DataStore, Project, Template } from '../types/index.js'
+import type { DataStore, Project, Template, AppSettings } from '../types/index.js'
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
 const DATA_FILE = path.resolve(__dirname, '../../../data/store.json')
@@ -9,6 +9,7 @@ const DATA_FILE = path.resolve(__dirname, '../../../data/store.json')
 const defaultData: DataStore = {
   projects: [],
   templates: [],
+  settings: {},
 }
 
 async function ensureDataFile(): Promise<void> {
@@ -98,3 +99,32 @@ export const dataStore = {
     return true
   },
 }
+
+// Settings - 동기적 접근을 위한 캐시
+let settingsCache: AppSettings = {}
+
+export function getSettings(): AppSettings {
+  return settingsCache
+}
+
+export function saveSettings(settings: Partial<AppSettings>): void {
+  settingsCache = { ...settingsCache, ...settings }
+  // 비동기로 파일에 저장
+  readData().then(data => {
+    data.settings = settingsCache
+    writeData(data)
+  })
+}
+
+// 초기 설정 로드
+async function loadSettings(): Promise<void> {
+  try {
+    const data = await readData()
+    settingsCache = data.settings || {}
+  } catch {
+    settingsCache = {}
+  }
+}
+
+// 모듈 로드 시 설정 초기화
+loadSettings()

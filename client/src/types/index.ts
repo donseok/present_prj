@@ -45,3 +45,32 @@ export interface Template {
   placeholders: string[]
   createdAt: string
 }
+
+export interface AnalyzedProjectInfo {
+  name: string
+  client: string
+  description: string
+  scope: string
+  startDate: string
+  endDate: string
+  status: string
+  team: TeamMember[]
+  milestones: Milestone[]
+  requirements: {
+    functional: Requirement[]
+    nonFunctional: Requirement[]
+  }
+  analyzedFiles: string[]
+  confidence: number
+}
+
+export interface FolderItem {
+  name: string
+  isDirectory: boolean
+}
+
+export interface BrowseResult {
+  currentPath: string
+  parentPath: string | null
+  items: FolderItem[]
+}
