@@ -126,6 +126,13 @@ export const translations = {
       infoClaude: 'CLAUDE.md: 프로젝트 개요, 아키텍처, 기술 스택',
       infoWbs: 'WBS.md: 마일스톤, 단계별 작업, 산출물',
       infoStructure: '폴더 구조: 프로젝트 타입 자동 감지 (React, Node.js, Java 등)',
+      localMode: '로컬 폴더',
+      uploadMode: '파일 업로드',
+      dropFiles: '파일을 드래그하거나 클릭하여 선택',
+      supportedFiles: 'README.md, package.json, PRD.md, WBS.md, CLAUDE.md 등',
+      uploadedFiles: '업로드된 파일',
+      uploadPrompt: '프로젝트 파일을 업로드하세요',
+      webModeInfo: '웹 모드: 파일을 업로드하면 브라우저에서 직접 분석합니다 (서버 전송 없음)',
     },
     // Login Page
     login: {
@@ -316,6 +323,13 @@ export const translations = {
       infoClaude: 'CLAUDE.md: Project overview, architecture, tech stack',
       infoWbs: 'WBS.md: Milestones, phased tasks, deliverables',
       infoStructure: 'Folder structure: Auto-detect project type (React, Node.js, Java, etc.)',
+      localMode: 'Local Folder',
+      uploadMode: 'File Upload',
+      dropFiles: 'Drag files or click to select',
+      supportedFiles: 'README.md, package.json, PRD.md, WBS.md, CLAUDE.md, etc.',
+      uploadedFiles: 'Uploaded Files',
+      uploadPrompt: 'Please upload project files',
+      webModeInfo: 'Web mode: Files are analyzed directly in the browser (no server upload)',
     },
     // Login Page
     login: {
@@ -506,6 +520,13 @@ export const translations = {
       infoClaude: 'CLAUDE.md: Tổng quan dự án, kiến trúc, công nghệ',
       infoWbs: 'WBS.md: Cột mốc, nhiệm vụ theo giai đoạn, sản phẩm',
       infoStructure: 'Cấu trúc thư mục: Tự động phát hiện loại dự án (React, Node.js, Java, v.v.)',
+      localMode: 'Thư mục cục bộ',
+      uploadMode: 'Tải lên tệp',
+      dropFiles: 'Kéo tệp hoặc nhấp để chọn',
+      supportedFiles: 'README.md, package.json, PRD.md, WBS.md, CLAUDE.md, v.v.',
+      uploadedFiles: 'Tệp đã tải lên',
+      uploadPrompt: 'Vui lòng tải lên tệp dự án',
+      webModeInfo: 'Chế độ web: Tệp được phân tích trực tiếp trong trình duyệt (không tải lên máy chủ)',
     },
     // Login Page
     login: {

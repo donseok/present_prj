@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { analyzeApi, projectApi } from '../services/api'
 import type { AnalyzedProjectInfo, FolderItem, TeamMember, Milestone } from '../types'
@@ -6,21 +6,30 @@ import DatePicker from '../components/DatePicker'
 import { useLanguage } from '../contexts/LanguageContext'
 
 type Step = 'folder' | 'analyzing' | 'review'
+type Mode = 'local' | 'upload'
 
 function AnalyzePage() {
   const navigate = useNavigate()
   const { t } = useLanguage()
 
+  // 환경 감지 (로컬 서버 vs 웹 배포)
+  const [mode, setMode] = useState<Mode>('upload')
+  const [isLocalAvailable, setIsLocalAvailable] = useState(false)
+
   // 단계 관리
   const [step, setStep] = useState<Step>('folder')
 
-  // 폴더 탐색 상태
+  // 폴더 탐색 상태 (로컬 모드)
   const [currentPath, setCurrentPath] = useState('')
   const [parentPath, setParentPath] = useState<string | null>(null)
   const [items, setItems] = useState<FolderItem[]>([])
   const [drives, setDrives] = useState<string[]>([])
   const [selectedPath, setSelectedPath] = useState('')
   const [pathInput, setPathInput] = useState('')
+
+  // 파일 업로드 상태 (웹 모드)
+  const [uploadedFiles, setUploadedFiles] = useState<File[]>([])
+  const fileInputRef = useRef<HTMLInputElement>(null)
 
   // 분석 상태
   const [analyzeError, setAnalyzeError] = useState('')
@@ -32,23 +41,30 @@ function AnalyzePage() {
   const [saving, setSaving] = useState(false)
 
   useEffect(() => {
-    loadInitialData()
+    checkLocalAvailability()
   }, [])
 
-  const loadInitialData = async () => {
+  const checkLocalAvailability = async () => {
     try {
-      // 드라이브 목록
+      // 로컬 서버 API 테스트
       const driveList = await analyzeApi.getDrives()
-      setDrives(driveList)
+      if (driveList && driveList.length > 0) {
+        setIsLocalAvailable(true)
+        setMode('local')
+        setDrives(driveList)
 
-      // 기본 경로 로드
-      const result = await analyzeApi.browse()
-      setCurrentPath(result.currentPath)
-      setParentPath(result.parentPath)
-      setItems(result.items)
-      setPathInput(result.currentPath)
+        // 기본 경로 로드
+        const result = await analyzeApi.browse()
+        setCurrentPath(result.currentPath)
+        setParentPath(result.parentPath)
+        setItems(result.items)
+        setPathInput(result.currentPath)
+      }
     } catch (error) {
-      console.error('Failed to load initial data:', error)
+      // 로컬 API 실패 시 업로드 모드로 설정
+      console.log('Local API not available, using upload mode')
+      setIsLocalAvailable(false)
+      setMode('upload')
     }
   }
 
@@ -93,28 +109,169 @@ function AnalyzePage() {
   }
 
   const handleAnalyze = async () => {
-    if (!selectedPath) {
-      alert(t.analyze.selectFolderPrompt)
-      return
-    }
+    if (mode === 'local') {
+      if (!selectedPath) {
+        alert(t.analyze.selectFolderPrompt)
+        return
+      }
 
-    setStep('analyzing')
-    setAnalyzeError('')
+      setStep('analyzing')
+      setAnalyzeError('')
 
-    try {
-      const result = await analyzeApi.analyzeFolder(selectedPath)
+      try {
+        const result = await analyzeApi.analyzeFolder(selectedPath)
 
-      if (result.success && result.projectInfo) {
-        setProjectInfo(result.projectInfo)
-        setStep('review')
-      } else {
-        setAnalyzeError(result.error || t.errors.loadFailed)
+        if (result.success && result.projectInfo) {
+          setProjectInfo(result.projectInfo)
+          setStep('review')
+        } else {
+          setAnalyzeError(result.error || t.errors?.loadFailed || 'Failed to analyze')
+          setStep('folder')
+        }
+      } catch (error) {
+        console.error('Analyze error:', error)
+        setAnalyzeError(t.errors?.loadFailed || 'Failed to analyze')
         setStep('folder')
       }
-    } catch (error) {
-      console.error('Analyze error:', error)
-      setAnalyzeError(t.errors.loadFailed)
-      setStep('folder')
+    } else {
+      // 업로드 모드 - 클라이언트에서 직접 파일 분석
+      if (uploadedFiles.length === 0) {
+        alert(t.analyze.uploadPrompt || 'Please upload project files')
+        return
+      }
+
+      setStep('analyzing')
+      setAnalyzeError('')
+
+      try {
+        const result = await analyzeUploadedFiles(uploadedFiles)
+        setProjectInfo(result)
+        setStep('review')
+      } catch (error) {
+        console.error('Analyze error:', error)
+        setAnalyzeError(t.errors?.loadFailed || 'Failed to analyze')
+        setStep('folder')
+      }
+    }
+  }
+
+  // 파일 업로드 핸들러
+  const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = e.target.files
+    if (files) {
+      setUploadedFiles(prev => [...prev, ...Array.from(files)])
+    }
+  }
+
+  const handleFileDrop = (e: React.DragEvent) => {
+    e.preventDefault()
+    const files = e.dataTransfer.files
+    if (files) {
+      setUploadedFiles(prev => [...prev, ...Array.from(files)])
+    }
+  }
+
+  const handleDragOver = (e: React.DragEvent) => {
+    e.preventDefault()
+  }
+
+  const removeFile = (index: number) => {
+    setUploadedFiles(prev => prev.filter((_, i) => i !== index))
+  }
+
+  // 업로드된 파일 분석 (클라이언트 사이드)
+  const analyzeUploadedFiles = async (files: File[]): Promise<AnalyzedProjectInfo> => {
+    const analyzedFiles: string[] = []
+    let projectName = ''
+    let description = ''
+    let client = ''
+    const features: string[] = []
+    const team: TeamMember[] = []
+    const milestones: Milestone[] = []
+
+    for (const file of files) {
+      const content = await file.text()
+      const fileName = file.name.toLowerCase()
+      analyzedFiles.push(file.name)
+
+      // README.md 분석
+      if (fileName === 'readme.md') {
+        const titleMatch = content.match(/^#\s+(.+)$/m)
+        if (titleMatch) projectName = titleMatch[1]
+
+        const descMatch = content.match(/^#[^#].*\n\n(.+?)(?=\n\n|\n#|$)/s)
+        if (descMatch) description = descMatch[1].trim()
+
+        const featureMatches = content.match(/[-*]\s+(.+)/g)
+        if (featureMatches) {
+          features.push(...featureMatches.slice(0, 10).map(f => f.replace(/^[-*]\s+/, '')))
+        }
+      }
+
+      // package.json 분석
+      if (fileName === 'package.json') {
+        try {
+          const pkg = JSON.parse(content)
+          if (pkg.name && !projectName) projectName = pkg.name
+          if (pkg.description && !description) description = pkg.description
+          if (pkg.author) {
+            const authorName = typeof pkg.author === 'string' ? pkg.author : pkg.author.name
+            if (authorName) {
+              team.push({ name: authorName, role: 'Developer', responsibility: 'Project Lead' })
+            }
+          }
+        } catch (e) {
+          console.error('Failed to parse package.json')
+        }
+      }
+
+      // PRD.md 분석
+      if (fileName === 'prd.md') {
+        const titleMatch = content.match(/^#\s+(.+)$/m)
+        if (titleMatch && !projectName) projectName = titleMatch[1]
+
+        const featureMatches = content.match(/[-*]\s+(.+)/g)
+        if (featureMatches) {
+          features.push(...featureMatches.slice(0, 10).map(f => f.replace(/^[-*]\s+/, '')))
+        }
+      }
+
+      // WBS.md 분석
+      if (fileName === 'wbs.md') {
+        const milestoneMatches = content.match(/##\s+(.+)/g)
+        if (milestoneMatches) {
+          milestoneMatches.slice(0, 5).forEach(m => {
+            milestones.push({
+              name: m.replace(/^##\s+/, ''),
+              date: '',
+              deliverables: ''
+            })
+          })
+        }
+      }
+    }
+
+    return {
+      name: projectName || 'Untitled Project',
+      client: client,
+      description: description || features.join(', '),
+      scope: features.slice(0, 5).join('\n'),
+      startDate: '',
+      endDate: '',
+      status: 'In Progress',
+      team,
+      milestones,
+      requirements: {
+        functional: features.slice(0, 5).map((f, i) => ({
+          id: `FR-${String(i + 1).padStart(3, '0')}`,
+          category: 'Feature',
+          description: f,
+          priority: i < 3 ? 'high' as const : 'medium' as const
+        })),
+        nonFunctional: []
+      },
+      confidence: files.length >= 3 ? 0.8 : files.length >= 2 ? 0.6 : 0.4,
+      analyzedFiles
     }
   }
 
@@ -531,130 +688,233 @@ function AnalyzePage() {
         </div>
       )}
 
-      {/* 폴더 브라우저 */}
-      <div className="card p-6">
-        {/* 경로 입력 */}
-        <div className="flex gap-3 mb-4">
-          <div className="flex-1 relative">
-            <input
-              type="text"
-              value={pathInput}
-              onChange={(e) => setPathInput(e.target.value)}
-              onKeyDown={handlePathInputKeyDown}
-              placeholder={t.common.search}
-              className="input-dark pr-10"
-            />
-            <button
-              onClick={() => browsePath(pathInput)}
-              className="absolute right-2 top-1/2 -translate-y-1/2 p-2 text-gray-400 hover:text-white"
-            >
-              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-              </svg>
-            </button>
-          </div>
-        </div>
-
-        {/* 드라이브 선택 */}
-        <div className="flex gap-2 mb-4 flex-wrap">
-          {drives.map((drive) => (
-            <button
-              key={drive}
-              onClick={() => browsePath(drive)}
-              className={`px-4 py-2 rounded-lg text-sm font-medium transition-all ${
-                currentPath.startsWith(drive)
-                  ? 'bg-purple-500/20 text-purple-400 border border-purple-500/30'
-                  : 'bg-[#252540] text-gray-400 hover:text-white'
-              }`}
-            >
-              {drive}
-            </button>
-          ))}
-        </div>
-
-        {/* 상위 폴더 버튼 */}
-        {parentPath && (
+      {/* 모드 선택 탭 (로컬이 가능한 경우에만 표시) */}
+      {isLocalAvailable && (
+        <div className="flex gap-2 mb-6">
           <button
-            onClick={() => browsePath(parentPath)}
-            className="flex items-center gap-2 w-full p-3 text-left text-gray-400 hover:text-white hover:bg-[#252540] rounded-lg mb-2 transition-colors"
+            onClick={() => setMode('local')}
+            className={`flex items-center gap-2 px-4 py-2 rounded-xl transition-all ${
+              mode === 'local'
+                ? 'bg-purple-500/20 text-purple-400 border border-purple-500/30'
+                : 'bg-[#252540] text-gray-400 hover:text-white'
+            }`}
           >
             <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-6l-2-2H5a2 2 0 00-2 2z" />
             </svg>
-            <span>..</span>
+            {t.analyze.localMode || '로컬 폴더'}
           </button>
-        )}
-
-        {/* 폴더/파일 목록 */}
-        <div className="max-h-80 overflow-y-auto space-y-1">
-          {items.map((item) => (
-            <button
-              key={item.name}
-              onClick={() => handleItemClick(item)}
-              onDoubleClick={() => handleItemDoubleClick(item)}
-              className={`flex items-center gap-3 w-full p-3 text-left rounded-lg transition-colors ${
-                item.isDirectory
-                  ? 'text-white hover:bg-[#252540]'
-                  : 'text-gray-500 cursor-default'
-              }`}
-            >
-              {item.isDirectory ? (
-                <svg className="w-5 h-5 text-yellow-400" fill="currentColor" viewBox="0 0 24 24">
-                  <path d="M10 4H4c-1.1 0-1.99.9-1.99 2L2 18c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V8c0-1.1-.9-2-2-2h-8l-2-2z" />
-                </svg>
-              ) : (
-                <svg className="w-5 h-5 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-                </svg>
-              )}
-              <span>{item.name}</span>
-            </button>
-          ))}
+          <button
+            onClick={() => setMode('upload')}
+            className={`flex items-center gap-2 px-4 py-2 rounded-xl transition-all ${
+              mode === 'upload'
+                ? 'bg-purple-500/20 text-purple-400 border border-purple-500/30'
+                : 'bg-[#252540] text-gray-400 hover:text-white'
+            }`}
+          >
+            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" />
+            </svg>
+            {t.analyze.uploadMode || '파일 업로드'}
+          </button>
         </div>
+      )}
 
-        {/* 선택된 폴더 표시 및 버튼 */}
-        <div className="mt-6 pt-6 border-t border-purple-500/20">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-gray-400 text-sm mb-1">{t.analyze.selectedFolder}</p>
-              <p className="text-white font-medium">
-                {selectedPath || currentPath || t.analyze.selectFolderPrompt}
-              </p>
-            </div>
-            <div className="flex gap-3">
+      {/* 로컬 모드: 폴더 브라우저 */}
+      {mode === 'local' && (
+        <div className="card p-6">
+          {/* 경로 입력 */}
+          <div className="flex gap-3 mb-4">
+            <div className="flex-1 relative">
+              <input
+                type="text"
+                value={pathInput}
+                onChange={(e) => setPathInput(e.target.value)}
+                onKeyDown={handlePathInputKeyDown}
+                placeholder={t.common.search}
+                className="input-dark pr-10"
+              />
               <button
-                onClick={handleSelectFolder}
-                className={`flex items-center gap-2 px-4 py-2 rounded-xl transition-all ${
-                  selectedPath
-                    ? 'bg-green-500/20 text-green-400 border border-green-500/30'
-                    : 'bg-[#252540] text-white hover:bg-[#303055]'
-                }`}
-              >
-                {selectedPath ? (
-                  <>
-                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                    </svg>
-                    {t.analyze.folderSelected}
-                  </>
-                ) : (
-                  t.analyze.currentFolder
-                )}
-              </button>
-              <button
-                onClick={handleAnalyze}
-                disabled={!selectedPath && !currentPath}
-                className="flex items-center gap-2 px-6 py-2 bg-gradient-to-r from-purple-500 to-pink-500 text-white font-semibold rounded-xl shadow-lg shadow-purple-500/30 hover:shadow-xl hover:shadow-purple-500/40 transition-all disabled:opacity-50"
+                onClick={() => browsePath(pathInput)}
+                className="absolute right-2 top-1/2 -translate-y-1/2 p-2 text-gray-400 hover:text-white"
               >
                 <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
                 </svg>
-                {t.analyze.analyze}
               </button>
             </div>
           </div>
+
+          {/* 드라이브 선택 */}
+          <div className="flex gap-2 mb-4 flex-wrap">
+            {drives.map((drive) => (
+              <button
+                key={drive}
+                onClick={() => browsePath(drive)}
+                className={`px-4 py-2 rounded-lg text-sm font-medium transition-all ${
+                  currentPath.startsWith(drive)
+                    ? 'bg-purple-500/20 text-purple-400 border border-purple-500/30'
+                    : 'bg-[#252540] text-gray-400 hover:text-white'
+                }`}
+              >
+                {drive}
+              </button>
+            ))}
+          </div>
+
+          {/* 상위 폴더 버튼 */}
+          {parentPath && (
+            <button
+              onClick={() => browsePath(parentPath)}
+              className="flex items-center gap-2 w-full p-3 text-left text-gray-400 hover:text-white hover:bg-[#252540] rounded-lg mb-2 transition-colors"
+            >
+              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-6l-2-2H5a2 2 0 00-2 2z" />
+              </svg>
+              <span>..</span>
+            </button>
+          )}
+
+          {/* 폴더/파일 목록 */}
+          <div className="max-h-80 overflow-y-auto space-y-1">
+            {items.map((item) => (
+              <button
+                key={item.name}
+                onClick={() => handleItemClick(item)}
+                onDoubleClick={() => handleItemDoubleClick(item)}
+                className={`flex items-center gap-3 w-full p-3 text-left rounded-lg transition-colors ${
+                  item.isDirectory
+                    ? 'text-white hover:bg-[#252540]'
+                    : 'text-gray-500 cursor-default'
+                }`}
+              >
+                {item.isDirectory ? (
+                  <svg className="w-5 h-5 text-yellow-400" fill="currentColor" viewBox="0 0 24 24">
+                    <path d="M10 4H4c-1.1 0-1.99.9-1.99 2L2 18c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V8c0-1.1-.9-2-2-2h-8l-2-2z" />
+                  </svg>
+                ) : (
+                  <svg className="w-5 h-5 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                  </svg>
+                )}
+                <span>{item.name}</span>
+              </button>
+            ))}
+          </div>
+
+          {/* 선택된 폴더 표시 및 버튼 */}
+          <div className="mt-6 pt-6 border-t border-purple-500/20">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-gray-400 text-sm mb-1">{t.analyze.selectedFolder}</p>
+                <p className="text-white font-medium">
+                  {selectedPath || currentPath || t.analyze.selectFolderPrompt}
+                </p>
+              </div>
+              <div className="flex gap-3">
+                <button
+                  onClick={handleSelectFolder}
+                  className={`flex items-center gap-2 px-4 py-2 rounded-xl transition-all ${
+                    selectedPath
+                      ? 'bg-green-500/20 text-green-400 border border-green-500/30'
+                      : 'bg-[#252540] text-white hover:bg-[#303055]'
+                  }`}
+                >
+                  {selectedPath ? (
+                    <>
+                      <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                      </svg>
+                      {t.analyze.folderSelected}
+                    </>
+                  ) : (
+                    t.analyze.currentFolder
+                  )}
+                </button>
+                <button
+                  onClick={handleAnalyze}
+                  disabled={!selectedPath && !currentPath}
+                  className="flex items-center gap-2 px-6 py-2 bg-gradient-to-r from-purple-500 to-pink-500 text-white font-semibold rounded-xl shadow-lg shadow-purple-500/30 hover:shadow-xl hover:shadow-purple-500/40 transition-all disabled:opacity-50"
+                >
+                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                  </svg>
+                  {t.analyze.analyze}
+                </button>
+              </div>
+            </div>
+          </div>
         </div>
-      </div>
+      )}
+
+      {/* 업로드 모드: 파일 업로드 */}
+      {mode === 'upload' && (
+        <div className="card p-6">
+          {/* 드래그 앤 드롭 영역 */}
+          <div
+            onDrop={handleFileDrop}
+            onDragOver={handleDragOver}
+            className="border-2 border-dashed border-purple-500/30 rounded-xl p-8 text-center hover:border-purple-500/50 transition-colors cursor-pointer"
+            onClick={() => fileInputRef.current?.click()}
+          >
+            <input
+              ref={fileInputRef}
+              type="file"
+              multiple
+              accept=".md,.json,.xml,.gradle,.txt"
+              onChange={handleFileSelect}
+              className="hidden"
+            />
+            <svg className="w-12 h-12 mx-auto mb-4 text-purple-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" />
+            </svg>
+            <p className="text-white font-medium mb-2">{t.analyze.dropFiles || '파일을 드래그하거나 클릭하여 선택'}</p>
+            <p className="text-gray-400 text-sm">{t.analyze.supportedFiles || 'README.md, package.json, PRD.md, WBS.md, CLAUDE.md 등'}</p>
+          </div>
+
+          {/* 업로드된 파일 목록 */}
+          {uploadedFiles.length > 0 && (
+            <div className="mt-6">
+              <h3 className="text-white font-medium mb-3">{t.analyze.uploadedFiles || '업로드된 파일'} ({uploadedFiles.length})</h3>
+              <div className="space-y-2 max-h-60 overflow-y-auto">
+                {uploadedFiles.map((file, index) => (
+                  <div key={index} className="flex items-center justify-between p-3 bg-[#252540] rounded-lg">
+                    <div className="flex items-center gap-3">
+                      <svg className="w-5 h-5 text-purple-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                      </svg>
+                      <span className="text-white">{file.name}</span>
+                      <span className="text-gray-500 text-sm">({(file.size / 1024).toFixed(1)} KB)</span>
+                    </div>
+                    <button
+                      onClick={() => removeFile(index)}
+                      className="p-1 text-red-400 hover:bg-red-500/10 rounded transition-colors"
+                    >
+                      <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                      </svg>
+                    </button>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* 분석 버튼 */}
+          <div className="mt-6 pt-6 border-t border-purple-500/20 flex justify-end">
+            <button
+              onClick={handleAnalyze}
+              disabled={uploadedFiles.length === 0}
+              className="flex items-center gap-2 px-6 py-2 bg-gradient-to-r from-purple-500 to-pink-500 text-white font-semibold rounded-xl shadow-lg shadow-purple-500/30 hover:shadow-xl hover:shadow-purple-500/40 transition-all disabled:opacity-50"
+            >
+              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+              </svg>
+              {t.analyze.analyze}
+            </button>
+          </div>
+        </div>
+      )}
 
       {/* 안내 */}
       <div className="mt-6 p-4 bg-blue-500/10 border border-blue-500/30 rounded-xl">
@@ -665,7 +925,9 @@ function AnalyzePage() {
           <li>• {t.analyze.infoPrd}</li>
           <li>• {t.analyze.infoClaude}</li>
           <li>• {t.analyze.infoWbs}</li>
-          <li>• {t.analyze.infoStructure}</li>
+          {mode === 'upload' && (
+            <li className="text-purple-400">• {t.analyze.webModeInfo || '웹 모드: 파일을 업로드하면 브라우저에서 직접 분석합니다 (서버 전송 없음)'}</li>
+          )}
         </ul>
       </div>
     </div>
